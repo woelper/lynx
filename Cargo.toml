@@ -10,6 +10,7 @@ rodio = "*"
 eframe = "0.14.0"
 serde = { version = "1", features = ["derive"], optional = true }
 structopt = "0.3"
+anyhow = "*"
 
 [features]
 default = ["persistence"] # save state by default
