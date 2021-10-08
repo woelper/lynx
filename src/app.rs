@@ -13,7 +13,7 @@ use eframe::{
 use std::ffi::OsStr;
 use structopt::StructOpt;
 
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source, source::Buffered};
 
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
@@ -38,13 +38,15 @@ impl Sound {
         }
     }
 
-    pub fn generate_source(&mut self) -> Result<Decoder<BufReader<File>>> {
+    pub fn generate_source(&mut self) -> Result<Buffered<Decoder<File>>> {
         let open_file = File::open(&self.path)?;
-        let r = BufReader::new(open_file);
+        // let r = BufReader::new(open_file);
         // Decode that sound file into a source
-        let source = Decoder::new(r)?;
+        let source = Decoder::new(open_file)?.buffered();
+        dbg!(source.current_frame_len());
         self.sample_rate = source.sample_rate();
         self.channels = source.channels();
+        self.duration = source.total_duration();
         Ok(source)
     }
 }
@@ -59,24 +61,24 @@ struct Opt {
 
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 pub struct ApplicationState {
-    #[serde(skip)]
-    pub active_sound: Option<Decoder<BufReader<File>>>,
+
     #[serde(skip)]
     pub streams: Option<(OutputStream, OutputStreamHandle)>,
     #[serde(skip)]
     pub sink: Option<Sink>,
     volume: f32,
     queue: SoundQueue,
+    queue_index: usize,
 }
 
 impl Default for ApplicationState {
     fn default() -> Self {
         Self {
-            active_sound: None,
             streams: None,
             sink: None,
             volume: 1.0,
             queue: vec![],
+            queue_index: 0,
         }
     }
 }
@@ -113,6 +115,9 @@ impl epi::App for ApplicationState {
                 }
             }
         }
+        if let Some(sink) = &self.sink {
+            sink.set_volume(self.volume);
+        }
     }
 
     #[cfg(feature = "persistence")]
@@ -122,23 +127,23 @@ impl epi::App for ApplicationState {
 
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
         let ApplicationState {
-            active_sound,
             streams,
             sink,
             volume,
             queue,
+            queue_index,
         } = self;
 
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-            egui::menu::bar(ui, |ui| {
-                egui::menu::menu(ui, "File", |ui| {
-                    if ui.button("💣 Quit").clicked() {
-                        frame.quit();
-                    }
-                });
-            });
-        });
+        // egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        //     // The top panel is often a good place for a menu bar:
+        //     egui::menu::bar(ui, |ui| {
+        //         egui::menu::menu(ui, "File", |ui| {
+        //             if ui.button("💣 Quit").clicked() {
+        //                 frame.quit();
+        //             }
+        //         });
+        //     });
+        // });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if !ctx.input().raw.dropped_files.is_empty() {
@@ -154,24 +159,21 @@ impl epi::App for ApplicationState {
                 }
             }
 
-            if let Some(sound) = &active_sound {
-                // dbg!("znd");
-                ui.label(format!("Rate {}", sound.sample_rate()));
-                ui.label(format!("Channels {}", sound.channels()));
-            } else {
-                ui.label("No sound");
+            if let Some(current_song) = queue.get(*queue_index) {
+                ui.label(format!("{} kHz, {} channels {:?}", current_song.sample_rate, current_song.channels, current_song.duration.unwrap_or_default()));
             }
 
             if let Some(sink) = sink {
                 ui.horizontal(|ui| {
-                    if ui.button("Play").clicked() {
-                        sink.play();
+                    if sink.is_paused() {
+                        if ui.button("Play").clicked() {
+                            sink.play();
+                        }
+                    } else {
+                        if ui.button("Pause").clicked() {
+                            sink.pause();
+                        }
                     }
-
-                    if ui.button("Pause").clicked() {
-                        sink.pause();
-                    }
-
                     if ui.button("Stop").clicked() {
                         sink.stop();
                     }
@@ -184,29 +186,43 @@ impl epi::App for ApplicationState {
                     sink.set_volume(*volume);
                 }
 
-                for sound in queue {
-                    if ui
-                        .button(format!(
-                            "{}",
-                            sound
-                                .path
-                                .file_name()
-                                .unwrap_or(OsStr::new("no path"))
-                                .to_string_lossy()
-                        ))
-                        .clicked()
-                    {
-                        if let Ok(source) = sound.generate_source() {
-                            dbg!("loaded", &sound);
-                            // due to rodio's design, the sink is lost after stopping
-                            *sink = Sink::try_new(&streams.as_ref().unwrap().1).unwrap();
 
-                            sink.append(source);
-                            sink.play();
+
+                ui.vertical_centered_justified(|ui| {
+                    for (i, sound) in queue.iter_mut().enumerate() {
+
+                        if ui.selectable_label(*queue_index == i, nice_name(&sound.path)).double_clicked() {
+                            *queue_index = i;
+                            if let Ok(source) = sound.generate_source() {
+                                dbg!("loaded", &sound);
+                                // due to rodio's design, the sink is lost after stopping
+                                *sink = Sink::try_new(&streams.as_ref().unwrap().1).unwrap();
+                                sink.set_volume(*volume);
+                                let len = source.size_hint().0;
+                                dbg!("hint", len);
+                                let s = source.periodic_access(Duration::from_secs(1), |x| {
+                                    // dbg!(x.);
+                                });
+                                sink.append(s);
+                                sink.play();
+                            }
                         }
+
                     }
-                }
+                });
             }
         });
     }
+}
+
+fn nice_name(p: &Path) ->String {
+    format!(
+        "{}",
+        p
+        .file_name()
+        .unwrap_or(OsStr::new("no path"))
+        .to_string_lossy()
+        .replace("_", " ")
+        .replace("-", " ")
+    )
 }
