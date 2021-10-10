@@ -1,5 +1,5 @@
 mod app;
-use app::Sound;
+use app::MetaSound;
 use eframe::epi;
 use kira::{instance::InstanceSettings, manager::{AudioManager, AudioManagerSettings}, sound::SoundSettings};
 use std::path::PathBuf;

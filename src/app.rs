@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
-use std::{fs::File, io::BufReader, path::{Path, PathBuf}, sync::Arc, time::Duration};
+use std::{path::{Path, PathBuf}, sync::Arc, time::Duration};
 
-use kira::{instance::{InstanceSettings, PauseInstanceSettings, ResumeInstanceSettings, handle::InstanceHandle}, manager::AudioManager, sound::{handle::SoundHandle, SoundSettings}};
+use kira::{instance::{PauseInstanceSettings, ResumeInstanceSettings, handle::InstanceHandle}, manager::AudioManager, sound::{handle::SoundHandle, SoundSettings}};
+use kira::manager::AudioManagerSettings;
+use kira::instance::InstanceSettings;
+
 
 use eframe::{egui::{self, Label}, epi};
 use std::ffi::OsStr;
@@ -10,11 +13,11 @@ use structopt::StructOpt;
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
-type SoundQueue = Vec<Sound>;
+type SoundQueue = Vec<MetaSound>;
 
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 #[derive(Debug, Clone, Default)]
-pub struct Sound {
+pub struct MetaSound {
     pub path: PathBuf,
     pub sample_rate: u32,
     pub channels: u16,
@@ -24,7 +27,7 @@ pub struct Sound {
     pub handle: Option<SoundHandle>,
 }
 
-impl Sound {
+impl MetaSound {
     pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Self {
         Self {
             path: path.as_ref().into(),
@@ -85,7 +88,7 @@ impl epi::App for ApplicationState {
         _frame: &mut epi::Frame<'_>,
         storage: Option<&dyn epi::Storage>,
     ) {
-        use kira::{instance::InstanceSettings, manager::AudioManagerSettings};
+
 
         if let Some(storage) = storage {
             let storage: ApplicationState =
@@ -95,11 +98,13 @@ impl epi::App for ApplicationState {
 
         // Parse arguments to auto-play sound
         let args = Opt::from_args();
-        
+
+        // Create an AudioManager
         self.manager = AudioManager::new(AudioManagerSettings::default()).ok();
 
+        // If the application was called with files as an argument, play the first
         if let Some(first_arg) = args.files.first() {
-            let mut sound = Sound::default().with_path(first_arg);
+            let mut sound = MetaSound::default().with_path(first_arg);
             if let Some(manager) = &mut self.manager {
                 self.active_sound = manager.load_sound(first_arg, SoundSettings::default()).ok();
                 if let Some(active_sound) = &mut self.active_sound {
@@ -133,18 +138,14 @@ impl epi::App for ApplicationState {
             queue_index,
         } = self;
 
-        // egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-        //     // The top panel is often a good place for a menu bar:
-        //     egui::menu::bar(ui, |ui| {
-        //         egui::menu::menu(ui, "File", |ui| {
-        //             if ui.button("💣 Quit").clicked() {
-        //                 frame.quit();
-        //             }
-        //         });
-        //     });
-        // });
+        
+        // Repaint every frame to update progress bar etc
+        ctx.request_repaint();
 
         egui::CentralPanel::default().show(ctx, |ui| {
+
+
+            // Handle droppec files
             if !ctx.input().raw.dropped_files.is_empty() {
                 for file in ctx
                     .input()
@@ -153,7 +154,7 @@ impl epi::App for ApplicationState {
                     .iter()
                     .filter_map(|d| d.path.as_ref())
                 {
-                    let s = Sound::default().with_path(file);
+                    let s = MetaSound::default().with_path(file);
                     queue.push(s);
                 }
             }
@@ -192,14 +193,19 @@ impl epi::App for ApplicationState {
 
                         }
                     });
+
+                    // TODO:move this out and put everything into MetaSound
                     if let Some(active_instance) = active_instance {
-                        let pos = active_instance.position();
-                        
-                        ui.label(format!("pos {:.1} {:.1}% {:.1}", pos, pos/active_sound.duration(), active_sound.duration()));
+                        let cur_pos = active_instance.position();
+                        let len = active_sound.duration();
+
+                        let progress = (cur_pos/len) as f32;
+                        ui.add(egui::ProgressBar::new(progress).text(format!("-{:.1}s", len - cur_pos)));
+                        // ui.label(format!("pos {:.1} {:.1}% {:.1}", cur_pos, (cur_pos/len)*100., len));
                     }
                 }
 
-        
+
 
                 ui.vertical_centered_justified(|ui| {
                     for (i, sound) in queue.iter_mut().enumerate() {
@@ -215,6 +221,8 @@ impl epi::App for ApplicationState {
                         }
                     }
                 });
+            } else {
+                ui.label("Could not create an AudioManager.");
             }
         });
     }
