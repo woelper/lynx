@@ -1132,6 +1132,7 @@ dependencies = [
  "kira",
  "serde",
  "structopt",
+ "taglib",
 ]
 
 [[package]]
@@ -1952,6 +1953,25 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
+]
+
+[[package]]
+name = "taglib"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b89f5ef37e426deffeed459ea78a564bbe85baf6a9b023a69437655b46ad2013"
+dependencies = [
+ "libc",
+ "taglib-sys",
+]
+
+[[package]]
+name = "taglib-sys"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e20ea22a603f1e8ccea16694cf8e8e3a192e5d6d6bb41d6e86dcbf3680d2a4e"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

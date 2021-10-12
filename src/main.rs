@@ -1,4 +1,5 @@
 mod app;
+pub mod sound;
 use eframe::epi;
 use std::path::PathBuf;
 use structopt::StructOpt;

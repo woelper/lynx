@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Error, Result};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -13,8 +12,9 @@ use kira::{
     sound::{handle::SoundHandle, SoundSettings},
 };
 
+use super::sound::*;
 use eframe::{
-    egui::{self},
+    egui::{self, Ui},
     epi,
 };
 use std::ffi::OsStr;
@@ -22,51 +22,6 @@ use structopt::StructOpt;
 
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
-
-/// The playlist
-type SoundQueue = Vec<MetaSound>;
-
-#[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
-#[derive(Debug, Clone, Default)]
-/// A high-level sound
-pub struct MetaSound {
-    pub path: PathBuf,
-    pub sample_rate: u32,
-    pub channels: u16,
-    pub duration: Duration,
-    pub looped: bool,
-    #[serde(skip)]
-    pub handle: Option<SoundHandle>,
-}
-
-impl MetaSound {
-    pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Self {
-        Self {
-            path: path.as_ref().into(),
-            ..self.clone()
-        }
-    }
-
-    pub fn load(&self, manager: &mut AudioManager) -> Result<SoundHandle, Error> {
-        manager
-            .load_sound(&self.path, SoundSettings::default())
-            .map_err(|e| anyhow!("{}", e))
-    }
-
-    pub fn load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
-        self.handle = self.load(manager).ok();
-        if let Some(handle) = &self.handle {
-            self.duration = Duration::from_secs_f64(handle.duration());
-        }
-        Ok(())
-    }
-
-    // pub fn play(&self) -> Result<()> {
-    //     let sound_handle = manager.load_sound(&self.path, SoundSettings::default())?;
-    //     self.handle = Some(sound_handle);
-    //     Ok(())
-    // }
-}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
@@ -128,7 +83,7 @@ impl epi::App for ApplicationState {
 
         // If the application was called with files as an argument, play the first
         if let Some(first_arg) = args.files.first() {
-            let mut sound = MetaSound::default().with_path(first_arg);
+            let mut sound = MetaSound::default().with_path(first_arg).unwrap();
             if let Some(manager) = &mut self.manager {
                 let _ = manager.main_track().set_volume(self.volume);
                 self.active_sound = sound.load(manager).ok();
@@ -168,7 +123,7 @@ impl epi::App for ApplicationState {
                     .iter()
                     .filter_map(|d| d.path.as_ref())
                 {
-                    let s = MetaSound::default().with_path(file);
+                    let s = MetaSound::default().with_path(file).unwrap();
                     queue.push(s);
                 }
             }
@@ -176,10 +131,8 @@ impl epi::App for ApplicationState {
             // info about current song
             if let Some(current_song) = queue.get(*queue_index) {
                 ui.label(format!(
-                    "{} kHz, {} channels {:?}",
-                    current_song.sample_rate,
-                    current_song.channels,
-                    current_song.duration
+                    "{} {} kHz, {} channels {:?}",
+                    current_song.name, current_song.sample_rate, current_song.channels, current_song.duration
                 ));
             }
 
@@ -254,8 +207,7 @@ impl epi::App for ApplicationState {
                     }
                 });
 
-
-
+                // playlist_ui()
             } else {
                 ui.label("Could not create an AudioManager.");
             }
@@ -263,13 +215,4 @@ impl epi::App for ApplicationState {
     }
 }
 
-fn nice_name(p: &Path) -> String {
-    format!(
-        "{}",
-        p.file_name()
-            .unwrap_or(OsStr::new("no path"))
-            .to_string_lossy()
-            .replace("_", " ")
-            .replace("-", " ")
-    )
-}
+fn playlist_ui(ui: &mut Ui, state: &mut ApplicationState) {}
