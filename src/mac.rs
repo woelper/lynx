@@ -42,16 +42,16 @@ pub fn launch() -> Result<(), Box<dyn Error>> {
     // Run 'forever', until the URL callback fires
     let _ = app.run(RunPeriod::Forever);
 
-    // Now it gets real ugly: Chainload this executable and quit, passing the received image as arg
-    if let Ok(oculante_exe) = std::env::current_exe() {
+    // Now it gets real ugly: Chainload this executable and quit, passing the received fil as arg
+    if let Ok(program_exe) = std::env::current_exe() {
         match file_arg.lock().unwrap().as_ref() {
             Some(f) => {
-                info!("Chainloaing {:?} with {}", oculante_exe, f);
-                let _ = Command::new(oculante_exe).args(&[&f, "-c"]).spawn();
+                info!("Chainloaing {:?} with {}", program_exe, f);
+                let _ = Command::new(program_exe).args(&[&f, "-c"]).spawn();
             }
             None => {
-                info!("Chainloaing {:?} with -c arg", oculante_exe);
-                let _ = Command::new(oculante_exe).args(&["-c"]).spawn();
+                info!("Chainloaing {:?} with -c arg", program_exe);
+                let _ = Command::new(program_exe).args(&["-c"]).spawn();
             }
         }
     }
