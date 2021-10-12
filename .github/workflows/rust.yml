@@ -7,6 +7,8 @@ jobs:
     name: Rust project
     runs-on: ubuntu-18.04
     steps:
+      - name: Install xcb
+        run: sudo apt-get install libxcb-shape0-dev libxcb-xfixes0-dev alsa-lib
       - uses: actions/checkout@v2
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
