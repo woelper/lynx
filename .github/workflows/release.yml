@@ -1,0 +1,131 @@
+name: Rust Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release_job:
+    name: Create release
+    runs-on: ubuntu-18.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: true
+
+
+  build_job:
+    name: Build release
+    needs: release_job
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04, windows-latest, macOS-latest]
+        rust: [stable]
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install cargo bundle
+      run: cargo install cargo-bundle
+      if: matrix.os == 'macOS-latest'
+    
+    - name: Install cargo strip
+      run: cargo install cargo-strip
+      if: matrix.os != 'windows-latest'
+
+    - name: Install xcb
+      run: sudo apt-get install libxcb-shape0-dev libxcb-xfixes0-dev
+      if: matrix.os == 'ubuntu-18.04'
+
+    - name: Build Application
+      run: cargo build --release
+
+    - name: Strip Application
+      run: cargo strip
+      if: matrix.os != 'windows-latest'
+
+    - name: Build Mac Bundle
+      run: ./build_mac.sh
+      if: matrix.os == 'macOS-latest'
+
+    - name: Zip Mac Bundle
+      run: mv target/release/bundle/osx/lynx.app . && zip -r lynx_app.zip lynx.app
+      if: matrix.os == 'macOS-latest'
+
+    - name: Upload Linux Release
+      if: matrix.os == 'ubuntu-18.04'
+      id: upload-release-asset-lin 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release_job.outputs.upload_url }}
+        asset_path: target/release/lynx
+        asset_name: lynx_linux
+        asset_content_type: application/zip
+
+    - name: Upload Mac Release
+      if: matrix.os == 'macOS-latest'
+      id: upload-release-asset-mac
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release_job.outputs.upload_url }}
+        asset_path: lynx_app.zip
+        asset_name: lynx_mac.zip
+        asset_content_type: application/zip
+    - name: Upload Mac Binary
+      if: matrix.os == 'macOS-latest'
+      id: upload-release-asset-bin
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release_job.outputs.upload_url }}
+        asset_path: target/release/lynx
+        asset_name: lynx_mac
+        asset_content_type: application/zip
+
+
+    - name: Upload Windows Release
+      if: matrix.os == 'windows-latest'
+      id: upload-release-asset-windows
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release_job.outputs.upload_url }}
+        asset_path: target/release/lynx.exe
+        asset_name: lynx.exe
+        asset_content_type: application/zip
+
+  publish_release:
+    name: Publish release
+    needs: [build_job, release_job]
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Test id
+      run: echo "${{ needs.release_job.outputs.release_id }}"
+    - name: Test id 2
+      run: echo "${{ needs.release_job.outputs.upload_url }}"
+    - name: Publish
+      uses: eregon/publish-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        release_id: ${{ needs.release_job.outputs.release_id }}
