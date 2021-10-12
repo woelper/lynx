@@ -2,8 +2,16 @@
 name = "lynx"
 version = "0.1.0"
 edition = "2018"
+license = "MIT"
+authors = ["Johann Woelper <woelper@gmail.com>"]
+repository = "https://github.com/woelper/lynx"
+description = "A minimalistic audio player"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package.metadata.bundle]
+name = "lynx"
+identifier = "com.github.woelper.lynx"
+icon = ["res/logo.png"]
+
 
 [dependencies]
 # rodio = "*"
@@ -13,11 +21,20 @@ structopt = "0.3"
 anyhow = "1.0.44"
 kira = "0.5.3"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+fruitbasket = { git = "https://github.com/woelper/fruitbasket", branch = "open-file-support" }
+
 [features]
 default = ["persistence"] # save state by default
 persistence = ["eframe/persistence", "serde"] # Enable if you want to persist app state on shutdown
 
+[profile.release]
+incremental = true
+lto = true
+codegen-units = 1
 
 [profile.dev]
 debug = 1
 split-debuginfo = "unpacked"
+incremental = true
+opt-level = 1
