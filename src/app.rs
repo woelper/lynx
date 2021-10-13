@@ -82,7 +82,7 @@ impl epi::App for ApplicationState {
 
         // If the application was called with files as an argument, play the first
         if let Some(first_arg) = args.files.first() {
-            let mut sound = MetaSound::default().with_path(first_arg).unwrap();
+            let mut sound = MetaSound::default().with_path(first_arg).try_meta();
             if let Some(manager) = &mut self.manager {
                 let _ = manager.main_track().set_volume(self.volume);
                 self.active_sound = sound.load(manager).ok();
@@ -126,7 +126,7 @@ impl epi::App for ApplicationState {
                     .iter()
                     .filter_map(|d| d.path.as_ref())
                 {
-                    let s = MetaSound::default().with_path(file).unwrap();
+                    let s = MetaSound::default().with_path(file).try_meta();
                     queue.push(s);
                 }
             }
@@ -135,7 +135,10 @@ impl epi::App for ApplicationState {
             if let Some(current_song) = queue.get(*queue_index) {
                 ui.label(format!(
                     "{} {} kHz, {} channels {:?}",
-                    current_song.name, current_song.sample_rate, current_song.channels, current_song.duration
+                    current_song.name,
+                    current_song.sample_rate,
+                    current_song.channels,
+                    current_song.duration
                 ));
             }
 
@@ -193,7 +196,7 @@ impl epi::App for ApplicationState {
                 ui.vertical_centered_justified(|ui| {
                     for (i, sound) in queue.iter_mut().enumerate() {
                         if ui
-                            .selectable_label(*queue_index == i, nice_name(&sound.path))
+                            .selectable_label(*queue_index == i, &sound.name)
                             .double_clicked()
                         {
                             *queue_index = i;

@@ -15,7 +15,6 @@ use anyhow::{anyhow, Error, Result};
 /// The playlist
 pub type SoundQueue = Vec<MetaSound>;
 
-
 pub trait Playlist {
     fn contains(&self, sound: &MetaSound) -> bool {
         unimplemented!()
@@ -44,19 +43,43 @@ pub struct MetaSound {
 }
 
 impl MetaSound {
-    pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Result<Self> {
-        //TODO: Load tags, id
-        let metadata = std::fs::metadata(path.as_ref())?;
-        let f = taglib::File::new(path.as_ref()).map_err(|e| anyhow!("{:?}", e))?;
-        let tag = f.tag().map_err(|e| anyhow!("{:?}", e))?;
-        let title = tag.title().ok_or(anyhow!("Can't read title"))?;
-        
+    pub fn load_id(&self) -> Result<Self> {
+        let metadata = std::fs::metadata(&self.path)?;
         Ok(Self {
-            path: path.as_ref().into(),
             id: metadata.len(),
-            name: title,
             ..self.clone()
         })
+    }
+
+    pub fn load_tag(&self) -> Result<Self> {
+        let f = taglib::File::new(&self.path).map_err(|e| anyhow!("{:?}", e))?;
+        let tag = f.tag().map_err(|e| anyhow!("{:?}", e))?;
+        let title = tag.title().ok_or(anyhow!("Can't read title"))?;
+        let artist = tag.artist().ok_or(anyhow!("Can't read artist"))?;
+        let album = tag.album().ok_or(anyhow!("Can't read album"))?;
+        Ok(Self {
+            name: format!("{} - {} | {}", title, artist, album),
+            ..self.clone()
+        })
+    }
+
+    pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Self {
+        Self {
+            path: path.as_ref().into(),
+            name: nice_name(&path.as_ref()),
+            ..self.clone()
+        }
+    }
+
+    // Tries to load metadata and tags, but does not fail.
+    pub fn try_meta(&self) -> Self {
+        match self.load_id() {
+            Ok(s_id) => match s_id.load_tag() {
+                Ok(s_id_tag) => s_id_tag,
+                Err(_) => self.clone(),
+            },
+            Err(_) => self.clone(),
+        }
     }
 
     pub fn load(&self, manager: &mut AudioManager) -> Result<SoundHandle, Error> {
