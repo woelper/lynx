@@ -17,7 +17,6 @@ use eframe::{
     egui::{self, Ui},
     epi,
 };
-use std::ffi::OsStr;
 use structopt::StructOpt;
 
 #[cfg(feature = "persistence")]
@@ -91,6 +90,10 @@ impl epi::App for ApplicationState {
                     let inst = active_sound.play(InstanceSettings::default()).ok();
                     self.active_instance = Some(Arc::new(inst.unwrap()));
                 }
+            }
+            dbg!(&sound);
+            if !self.queue.contains(&sound) {
+                self.queue.push(sound);
             }
         }
     }

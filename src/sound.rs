@@ -15,6 +15,19 @@ use anyhow::{anyhow, Error, Result};
 /// The playlist
 pub type SoundQueue = Vec<MetaSound>;
 
+
+pub trait Playlist {
+    fn contains(&self, sound: &MetaSound) -> bool {
+        unimplemented!()
+    }
+}
+
+impl Playlist for SoundQueue {
+    fn contains(&self, sound: &MetaSound) -> bool {
+        self.iter().filter(|s| s.id == sound.id).count() > 0
+    }
+}
+
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 #[derive(Debug, Clone, Default)]
 /// A high-level sound
