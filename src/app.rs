@@ -1,7 +1,6 @@
 use std::{
-    path::{Path, PathBuf},
+    path::{PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
@@ -9,7 +8,6 @@ use kira::manager::AudioManagerSettings;
 use kira::{
     instance::{handle::InstanceHandle, PauseInstanceSettings, ResumeInstanceSettings},
     manager::AudioManager,
-    sound::{handle::SoundHandle, SoundSettings},
 };
 
 use super::sound::*;
@@ -33,11 +31,8 @@ struct Opt {
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 pub struct ApplicationState {
     #[serde(skip)]
-    pub manager: Option<AudioManager>,
-    #[serde(skip)]
-    active_sound: Option<SoundHandle>,
-    #[serde(skip)]
-    active_instance: Option<Arc<InstanceHandle>>,
+    pub audiomanager: Option<AudioManager>,
+    pub active_sound: Option<MetaSound>,
     volume: f64,
     queue: SoundQueue,
     queue_index: usize,
@@ -46,9 +41,8 @@ pub struct ApplicationState {
 impl Default for ApplicationState {
     fn default() -> Self {
         Self {
-            manager: None,
+            audiomanager: None,
             active_sound: None,
-            active_instance: None,
             volume: 1.0,
             queue: vec![],
             queue_index: 0,
@@ -78,22 +72,28 @@ impl epi::App for ApplicationState {
         let args = Opt::from_args();
 
         // Create an AudioManager
-        self.manager = AudioManager::new(AudioManagerSettings::default()).ok();
+        self.audiomanager = AudioManager::new(AudioManagerSettings::default()).ok();
 
         // If the application was called with files as an argument, play the first
         if let Some(first_arg) = args.files.first() {
-            let mut sound = MetaSound::default().with_path(first_arg).try_meta();
-            if let Some(manager) = &mut self.manager {
+            if let Some(manager) = &mut self.audiomanager {
+                // restore previous volume
                 let _ = manager.main_track().set_volume(self.volume);
-                self.active_sound = sound.load(manager).ok();
-                if let Some(active_sound) = &mut self.active_sound {
-                    let inst = active_sound.play(InstanceSettings::default()).ok();
-                    self.active_instance = Some(Arc::new(inst.unwrap()));
-                }
-            }
-            dbg!(&sound);
-            if !self.queue.contains(&sound) {
+                // load the sound from disk
+                let sound = MetaSound::default()
+                    .with_path(first_arg)
+                    .try_meta()
+                    .load_soundhandle(manager);
+
+                self.active_sound = Some(sound.clone());
+                self.active_sound.as_mut().map(|s| s.play());
+
+                dbg!(&self.active_sound);
+                // push sound into queue
+                // if !self.queue.contains(&sound) {
+                // }
                 self.queue.push(sound);
+                self.queue_index = self.queue.len() - 1;
             }
         }
     }
@@ -105,9 +105,9 @@ impl epi::App for ApplicationState {
 
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let ApplicationState {
-            manager,
+            audiomanager: manager,
             active_sound,
-            active_instance,
+            // active_instance,
             volume,
             queue,
             queue_index,
@@ -127,98 +127,175 @@ impl epi::App for ApplicationState {
                     .filter_map(|d| d.path.as_ref())
                 {
                     let s = MetaSound::default().with_path(file).try_meta();
+                    dbg!(&s);
                     queue.push(s);
                 }
             }
 
             // info about current song
-            if let Some(current_song) = queue.get(*queue_index) {
+            if let Some(current_metasound) = active_sound {
                 ui.label(format!(
-                    "{} {} kHz, {} channels {:?}",
-                    current_song.name,
-                    current_song.sample_rate,
-                    current_song.channels,
-                    current_song.duration
+                    "{} {} kHz, {} channels len {:?}, soundhandle: {:?} instance {:?}",
+                    current_metasound.name,
+                    current_metasound.sample_rate,
+                    current_metasound.channels,
+                    current_metasound.duration,
+                    current_metasound.soundhandle,
+                    current_metasound.instancehandle,
                 ));
-            }
 
-            if let Some(manager) = manager {
-                if ui
-                    .add(egui::Slider::new(volume, 0.0..=3.0).text("volume"))
-                    .changed()
-                {
-                    let _ = manager.main_track().set_volume(*volume as f64);
-                }
-
-                if let Some(active_sound) = active_sound {
-                    // TODO:move this out and put everything into MetaSound
-                    if let Some(active_instance) = active_instance {
-                        let cur_pos = active_instance.position();
-                        let len = active_sound.duration();
-
-                        let progress = (cur_pos / len) as f32;
-                        ui.add(
-                            egui::ProgressBar::new(progress)
-                                .text(format!("-{:.1}s", len - cur_pos)),
-                        );
-
-                        ui.horizontal(|ui| {
-                            match active_instance.state() {
-                                InstanceState::Playing => {
-                                    if ui.button("Pause").clicked() {
-                                        let _ = active_sound.pause(PauseInstanceSettings::new());
-                                    }
-                                    if ui.button("Stop").clicked() {
-                                        let _ = active_sound.stop(StopInstanceSettings::new());
-                                    }
-                                }
-                                InstanceState::Paused(_) => {
-                                    if ui.button("Resume").clicked() {
-                                        let _ = active_sound.resume(ResumeInstanceSettings::new());
-                                        // active_sound.play(InstanceSettings::new()).unwrap();
-                                    }
-                                    if ui.button("Stop").clicked() {
-                                        let _ = active_sound.stop(StopInstanceSettings::new());
-                                    }
-                                }
-                                InstanceState::Stopped => {
-                                    if ui.button("Start").clicked() {
-                                        let _ = active_sound.play(InstanceSettings::new());
-                                    }
-                                }
-                                _ => {}
-                            }
-                        });
+                if let Some(manager) = manager {
+                    if ui
+                        .add(egui::Slider::new(volume, 0.0..=3.0).text("🔈"))
+                        .changed()
+                    {
+                        let _ = manager.main_track().set_volume(*volume as f64);
                     }
-                }
 
-                //playlist
-                ui.vertical_centered_justified(|ui| {
-                    for (i, sound) in queue.iter_mut().enumerate() {
-                        if ui
-                            .selectable_label(*queue_index == i, &sound.name)
-                            .double_clicked()
-                        {
-                            *queue_index = i;
-                            if let Some(active_sound) = active_sound {
-                                let _ = active_sound.stop(StopInstanceSettings::new());
+                    if let Some(instancehandle) = &current_metasound.instancehandle {
+                        if let Some(active_soundhandle) = current_metasound.soundhandle.as_mut() {
+                            let cur_pos = instancehandle.position();
+                            let len = active_soundhandle.duration();
+                            let progress = (cur_pos / len) as f32;
+                            if let Some(pos) = ui
+                                .add(
+                                    egui::ProgressBar::new(progress)
+                                        .text(format!("-{:.1}s", len - cur_pos)),
+                                )
+                                .interact_pointer_pos()
+                            {
+                                dbg!(pos);
                             }
 
-                            *active_sound = sound.load(manager).ok();
-                            if let Some(active_sound) = active_sound {
-                                let inst = active_sound.play(InstanceSettings::default()).ok();
-                                *active_instance = Some(Arc::new(inst.unwrap()));
-                            }
+                            ui.horizontal(|ui| {
+                                // TODO: disable button
+
+                                if ui
+                                    .add(egui::Button::new("⏮").enabled(*queue_index != 0))
+                                    .clicked()
+                                {
+                                    *queue_index -= 1;
+                                }
+
+                                match instancehandle.state() {
+                                    InstanceState::Playing => {
+                                        if ui.button("⏸").clicked() {
+                                            let _ = active_soundhandle
+                                                .pause(PauseInstanceSettings::new());
+                                        }
+                                        if ui.button("⏹").clicked() {
+                                            let _ = active_soundhandle
+                                                .stop(StopInstanceSettings::new());
+                                        }
+                                    }
+                                    InstanceState::Paused(_) => {
+                                        if ui.button("▶").clicked() {
+                                            let _ = active_soundhandle
+                                                .resume(ResumeInstanceSettings::new());
+                                            // active_sound.play(InstanceSettings::new()).unwrap();
+                                        }
+                                        if ui.button("⏹").clicked() {
+                                            let _ = active_soundhandle
+                                                .stop(StopInstanceSettings::new());
+                                        }
+                                    }
+                                    InstanceState::Stopped => {
+                                        if ui.button("▶").clicked() {
+                                            let _ =
+                                                active_soundhandle.play(InstanceSettings::new());
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                                if ui
+                                    .add(egui::Button::new("⏭").enabled(*queue_index < queue.len()))
+                                    .clicked()
+                                {
+                                    *queue_index += 1;
+                                    // current_metasound.stop();
+                                    // assign queue sound as active
+                                    // *active_sound = queue.get(*queue_index).map(|s| s.load_soundhandle(manager));
+                                    // let _ = active_sound.as_mut().map(|s| s.play());
+                                }
+                            });
+                        } else {
+                            ui.label("No active sound handle");
                         }
+                    } else {
+                        ui.label("No active sound instance");
                     }
-                });
 
-                // playlist_ui()
+                    //playlist
+                    let cloned_queue = queue.clone();
+                    ui.vertical_centered_justified(|ui| {
+                        for (i, sound) in cloned_queue.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .selectable_label(*queue_index == i, &sound.name)
+                                    .double_clicked()
+                                {
+                                    // update index to current
+                                    *queue_index = i;
+                                    // stop current sound
+                                    let _ = active_sound.as_mut().map(|s| s.stop());
+                                    // assign queue sound as active
+                                    *active_sound = queue
+                                        .get(*queue_index)
+                                        .map(|s| s.load_soundhandle(manager));
+                                    let _ = active_sound.as_mut().map(|s| s.play());
+                                }
+                                if i != 0 {
+                                    if ui.button("up").clicked() {
+                                        queue.swap(i - 1, i);
+                                    }
+                                }
+                                if ui.button("dn").clicked() {
+                                    queue.swap(i + 1, i);
+                                }
+                                if ui.button("🗙").clicked() {
+                                    queue.remove(i);
+                                    if queue_index < &mut (queue.len() - 1) {
+                                        *queue_index = 0;
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                    // playlist_ui()
+                } else {
+                    ui.label("Could not create an AudioManager.");
+                }
             } else {
-                ui.label("Could not create an AudioManager.");
+                ui.label(format!(
+                    "There is no sound in the queue at pos {}",
+                    queue_index
+                ));
             }
         });
     }
+
+    fn warm_up_enabled(&self) -> bool {
+        false
+    }
+
+    fn on_exit(&mut self) {}
+
+    fn auto_save_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(30)
+    }
+
+    fn max_size_points(&self) -> egui::Vec2 {
+        // Some browsers get slow with huge WebGL canvases, so we limit the size:
+        egui::Vec2::new(1024.0, 2048.0)
+    }
+
+    fn clear_color(&self) -> egui::Rgba {
+        // NOTE: a bright gray makes the shadows of the windows look weird.
+        // We use a bit of transparency so that if the user switches on the
+        // `transparent()` option they get immediate results.
+        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
+    }
 }
 
-fn playlist_ui(ui: &mut Ui, state: &mut ApplicationState) {}
+// fn playlist_ui(ui: &mut Ui, state: &mut ApplicationState) {}

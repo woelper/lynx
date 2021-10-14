@@ -19,7 +19,7 @@ eframe = "0.14.0"
 serde = { version = "1", features = ["derive"], optional = true }
 structopt = "0.3"
 anyhow = "1.0.44"
-kira = "0.5.3"
+kira = {version = "0.5.3", features = ["serde_support"]}
 taglib = "1.0.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]

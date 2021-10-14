@@ -1,12 +1,16 @@
+use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::{
+    instance::{handle::InstanceHandle, PauseInstanceSettings, ResumeInstanceSettings},
     manager::AudioManager,
     sound::{handle::SoundHandle, SoundSettings},
 };
+
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 
@@ -23,7 +27,7 @@ pub trait Playlist {
 
 impl Playlist for SoundQueue {
     fn contains(&self, sound: &MetaSound) -> bool {
-        self.iter().filter(|s| s.id == sound.id).count() > 0
+        self.iter().filter(|s| s.name == sound.name).count() > 0
     }
 }
 
@@ -31,26 +35,21 @@ impl Playlist for SoundQueue {
 #[derive(Debug, Clone, Default)]
 /// A high-level sound
 pub struct MetaSound {
+    /// Location of sound
     pub path: PathBuf,
+    /// Nice name of sound
     pub name: String,
     pub sample_rate: u32,
     pub channels: u16,
     pub duration: Duration,
     pub looped: bool,
     #[serde(skip)]
-    pub handle: Option<SoundHandle>,
-    pub id: u64,
+    pub soundhandle: Option<SoundHandle>,
+    #[serde(skip)]
+    pub instancehandle: Option<Arc<InstanceHandle>>,
 }
 
 impl MetaSound {
-    pub fn load_id(&self) -> Result<Self> {
-        let metadata = std::fs::metadata(&self.path)?;
-        Ok(Self {
-            id: metadata.len(),
-            ..self.clone()
-        })
-    }
-
     pub fn load_tag(&self) -> Result<Self> {
         let f = taglib::File::new(&self.path).map_err(|e| anyhow!("{:?}", e))?;
         let tag = f.tag().map_err(|e| anyhow!("{:?}", e))?;
@@ -58,7 +57,7 @@ impl MetaSound {
         let artist = tag.artist().ok_or(anyhow!("Can't read artist"))?;
         let album = tag.album().ok_or(anyhow!("Can't read album"))?;
         Ok(Self {
-            name: format!("{} - {} | {}", title, artist, album),
+            name: format!("{} - {} | {}", artist, title, album),
             ..self.clone()
         })
     }
@@ -73,11 +72,8 @@ impl MetaSound {
 
     // Tries to load metadata and tags, but does not fail.
     pub fn try_meta(&self) -> Self {
-        match self.load_id() {
-            Ok(s_id) => match s_id.load_tag() {
-                Ok(s_id_tag) => s_id_tag,
-                Err(_) => self.clone(),
-            },
+        match self.load_tag() {
+            Ok(s_id_tag) => s_id_tag,
             Err(_) => self.clone(),
         }
     }
@@ -88,19 +84,37 @@ impl MetaSound {
             .map_err(|e| anyhow!("{}", e))
     }
 
+    pub fn load_soundhandle(&self, manager: &mut AudioManager) -> Self {
+        let handle = self.load(manager).ok();
+        Self {
+            soundhandle: handle,
+            ..self.clone()
+        }
+    }
+
+    pub fn play(&mut self) -> Result<()> {
+        let soundhandle = self
+            .soundhandle
+            .as_mut()
+            .ok_or(anyhow!("Sound handle is None"))?;
+        let instancehandle = soundhandle.play(InstanceSettings::new())?;
+        self.instancehandle = Some(Arc::new(instancehandle));
+        Ok(())
+    }
+
     pub fn load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
-        self.handle = self.load(manager).ok();
-        if let Some(handle) = &self.handle {
+        self.soundhandle = self.load(manager).ok();
+        if let Some(handle) = &self.soundhandle {
             self.duration = Duration::from_secs_f64(handle.duration());
         }
         Ok(())
     }
 
-    // pub fn play(&self) -> Result<()> {
-    //     let sound_handle = manager.load_sound(&self.path, SoundSettings::default())?;
-    //     self.handle = Some(sound_handle);
-    //     Ok(())
-    // }
+    pub fn stop(&mut self) {
+        if let Some(h) = &mut self.soundhandle {
+            let _ = h.stop(StopInstanceSettings::new());
+        }
+    }
 }
 
 pub fn nice_name(p: &Path) -> String {
