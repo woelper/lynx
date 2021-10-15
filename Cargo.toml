@@ -20,7 +20,8 @@ serde = { version = "1", features = ["derive"], optional = true }
 structopt = "0.3"
 anyhow = "1.0.44"
 kira = {version = "0.5.3", features = ["serde_support"]}
-taglib = "1.0.0"
+# taglib = "1.0.0"
+audiotags = "0.2.7182"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 fruitbasket = { git = "https://github.com/woelper/fruitbasket", branch = "open-file-support" }

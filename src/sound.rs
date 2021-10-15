@@ -52,16 +52,16 @@ pub struct MetaSound {
 
 impl MetaSound {
     pub fn load_tag(&self) -> Result<Self> {
-        let f = taglib::File::new(&self.path).map_err(|e| anyhow!("{:?}", e))?;
-        let tag = f.tag().map_err(|e| anyhow!("{:?}", e))?;
+        let tag = audiotags::Tag::new().read_from_path(&self.path)?;
         let title = tag.title().ok_or(anyhow!("Can't read title"))?;
         let artist = tag.artist().ok_or(anyhow!("Can't read artist"))?;
-        let album = tag.album().ok_or(anyhow!("Can't read album"))?;
+        let album = tag.album().ok_or(anyhow!("Can't read album"))?.title;
         Ok(Self {
             name: format!("{} - {} | {}", artist, title, album),
             ..self.clone()
         })
     }
+
 
     pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Self {
         Self {
