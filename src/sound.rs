@@ -62,7 +62,6 @@ impl MetaSound {
         })
     }
 
-
     pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Self {
         Self {
             path: path.as_ref().into(),

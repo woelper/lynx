@@ -1,6 +1,4 @@
-use std::{
-    path::{PathBuf},
-};
+use std::path::PathBuf;
 
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::manager::AudioManagerSettings;
@@ -10,7 +8,10 @@ use kira::{
 };
 
 use super::sound::*;
-use eframe::{egui::{self, Color32, Response, Sense, Stroke, Ui}, epi};
+use eframe::{
+    egui::{self, Color32, Response, Sense, Stroke, Ui},
+    epi,
+};
 use structopt::StructOpt;
 
 #[cfg(feature = "persistence")]
@@ -140,10 +141,7 @@ impl epi::App for ApplicationState {
                 //     current_metasound.instancehandle,
                 // ));
 
-                ui.label(format!(
-                    "{}",
-                    current_metasound.name,
-                ));
+                ui.label(format!("{}", current_metasound.name,));
 
                 if let Some(manager) = manager {
                     if ui
@@ -154,23 +152,19 @@ impl epi::App for ApplicationState {
                     }
 
                     if let Some(instancehandle) = current_metasound.instancehandle.as_mut() {
-                        if let Some(active_soundhandle) = current_metasound.soundhandle.as_mut() {
+                        if let Some(soundhandle) = current_metasound.soundhandle.as_mut() {
                             let cur_pos = instancehandle.position();
-                            let len = active_soundhandle.duration();
+                            let len = soundhandle.duration();
                             let progress = (cur_pos / len) as f32;
 
-                            if let Some(pos) = scrubber(ui, progress)
-                            .interact_pointer_pos()
-                        {
-                            let w = ui.available_size().x;
-                            let p = pos.x;
-                            let fac = (p/w) as f64;
-                            let _ = instancehandle.seek_to(fac * len);
-                        }
-
+                            if let Some(pos) = scrubber(ui, progress).interact_pointer_pos() {
+                                let w = ui.available_size().x;
+                                let p = pos.x;
+                                let fac = (p / w) as f64;
+                                let _ = instancehandle.seek_to(fac * len);
+                            }
 
                             ui.horizontal(|ui| {
-
                                 if ui
                                     .add(egui::Button::new("⏮").enabled(*queue_index != 0))
                                     .clicked()
@@ -181,29 +175,25 @@ impl epi::App for ApplicationState {
                                 match instancehandle.state() {
                                     InstanceState::Playing => {
                                         if ui.button("⏸").clicked() {
-                                            let _ = active_soundhandle
-                                                .pause(PauseInstanceSettings::new());
+                                            let _ = soundhandle.pause(PauseInstanceSettings::new());
                                         }
                                         if ui.button("⏹").clicked() {
-                                            let _ = active_soundhandle
-                                                .stop(StopInstanceSettings::new());
+                                            let _ = soundhandle.stop(StopInstanceSettings::new());
                                         }
                                     }
                                     InstanceState::Paused(_) => {
                                         if ui.button("▶").clicked() {
-                                            let _ = active_soundhandle
-                                                .resume(ResumeInstanceSettings::new());
+                                            let _ =
+                                                soundhandle.resume(ResumeInstanceSettings::new());
                                             // active_sound.play(InstanceSettings::new()).unwrap();
                                         }
                                         if ui.button("⏹").clicked() {
-                                            let _ = active_soundhandle
-                                                .stop(StopInstanceSettings::new());
+                                            let _ = soundhandle.stop(StopInstanceSettings::new());
                                         }
                                     }
                                     InstanceState::Stopped => {
                                         if ui.button("▶").clicked() {
-                                            let _ =
-                                                active_soundhandle.play(InstanceSettings::new());
+                                            let _ = soundhandle.play(InstanceSettings::new());
                                         }
                                     }
                                     _ => {}
@@ -226,10 +216,11 @@ impl epi::App for ApplicationState {
                         ui.label("No active sound instance");
                     }
 
+
+                    ui.label(format!("q len {}", queue.len()));
                     //playlist
-                    let cloned_queue = queue.clone();
                     ui.vertical_centered_justified(|ui| {
-                        for (i, sound) in cloned_queue.iter().enumerate() {
+                        for (i, sound) in queue.clone().iter().enumerate() {
                             ui.horizontal(|ui| {
                                 if ui
                                     .selectable_label(*queue_index == i, &sound.name)
@@ -268,10 +259,7 @@ impl epi::App for ApplicationState {
                     ui.label("Could not create an AudioManager.");
                 }
             } else {
-                ui.label(format!(
-                    "There is no sound in the queue at pos {}",
-                    queue_index
-                ));
+                ui.label("No active sound");
             }
         });
     }
@@ -299,18 +287,26 @@ impl epi::App for ApplicationState {
     }
 }
 
-
 /// The scrollbar / scrub bar
-pub fn scrubber(ui: &mut Ui, scale: f32) -> Response{
+pub fn scrubber(ui: &mut Ui, scale: f32) -> Response {
     let mut dim = ui.available_rect_before_wrap_finite();
+    dim.set_height(ui.spacing().interact_size.y);
     let x = ui.allocate_rect(dim, Sense::click());
     let radius = 4.;
-    dim.set_height(ui.spacing().interact_size.y);
-    ui.painter().rect(dim, radius, ui.style().visuals.extreme_bg_color, Stroke::default());
-    dim.set_width(dim.width()*scale);
-    ui.painter().rect(dim, radius, Color32::from_rgb(10, 100, 0), Stroke::default());
+    ui.painter().rect(
+        dim,
+        radius,
+        ui.style().visuals.extreme_bg_color,
+        Stroke::default(),
+    );
+    dim.set_width(dim.width() * scale);
+    ui.painter().rect(
+        dim,
+        radius,
+        Color32::from_rgb(10, 100, 0),
+        Stroke::default(),
+    );
     x
 }
-
 
 // fn playlist_ui(ui: &mut Ui, state: &mut ApplicationState) {}
