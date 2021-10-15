@@ -46,7 +46,8 @@ pub struct MetaSound {
     #[serde(skip)]
     pub soundhandle: Option<SoundHandle>,
     #[serde(skip)]
-    pub instancehandle: Option<Arc<InstanceHandle>>,
+    pub instancehandle: Option<InstanceHandle>,
+    // pub instancehandle: Option<Arc<InstanceHandle>>,
 }
 
 impl MetaSound {
@@ -98,7 +99,8 @@ impl MetaSound {
             .as_mut()
             .ok_or(anyhow!("Sound handle is None"))?;
         let instancehandle = soundhandle.play(InstanceSettings::new())?;
-        self.instancehandle = Some(Arc::new(instancehandle));
+        self.instancehandle = Some(instancehandle);
+        // self.instancehandle = Some(Arc::new(instancehandle));
         Ok(())
     }
 

@@ -1,6 +1,5 @@
 use std::{
     path::{PathBuf},
-    sync::Arc,
 };
 
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
@@ -11,10 +10,7 @@ use kira::{
 };
 
 use super::sound::*;
-use eframe::{
-    egui::{self, Ui},
-    epi,
-};
+use eframe::{egui::{self, Color32, Response, Sense, Stroke, Ui}, epi};
 use structopt::StructOpt;
 
 #[cfg(feature = "persistence")]
@@ -58,7 +54,7 @@ impl epi::App for ApplicationState {
     #[cfg(feature = "persistence")]
     fn setup(
         &mut self,
-        _ctx: &egui::CtxRef,
+        ctx: &egui::CtxRef,
         _frame: &mut epi::Frame<'_>,
         storage: Option<&dyn epi::Storage>,
     ) {
@@ -67,6 +63,8 @@ impl epi::App for ApplicationState {
                 epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
             *self = storage;
         }
+
+        ctx.set_visuals(egui::Visuals::light());
 
         // Parse arguments to auto-play sound
         let args = Opt::from_args();
@@ -107,7 +105,6 @@ impl epi::App for ApplicationState {
         let ApplicationState {
             audiomanager: manager,
             active_sound,
-            // active_instance,
             volume,
             queue,
             queue_index,
@@ -127,21 +124,25 @@ impl epi::App for ApplicationState {
                     .filter_map(|d| d.path.as_ref())
                 {
                     let s = MetaSound::default().with_path(file).try_meta();
-                    dbg!(&s);
                     queue.push(s);
                 }
             }
 
             // info about current song
             if let Some(current_metasound) = active_sound {
+                // ui.label(format!(
+                //     "{} {} kHz, {} channels len {:?}, soundhandle: {:?} instance {:?}",
+                //     current_metasound.name,
+                //     current_metasound.sample_rate,
+                //     current_metasound.channels,
+                //     current_metasound.duration,
+                //     current_metasound.soundhandle,
+                //     current_metasound.instancehandle,
+                // ));
+
                 ui.label(format!(
-                    "{} {} kHz, {} channels len {:?}, soundhandle: {:?} instance {:?}",
+                    "{}",
                     current_metasound.name,
-                    current_metasound.sample_rate,
-                    current_metasound.channels,
-                    current_metasound.duration,
-                    current_metasound.soundhandle,
-                    current_metasound.instancehandle,
                 ));
 
                 if let Some(manager) = manager {
@@ -152,23 +153,23 @@ impl epi::App for ApplicationState {
                         let _ = manager.main_track().set_volume(*volume as f64);
                     }
 
-                    if let Some(instancehandle) = &current_metasound.instancehandle {
+                    if let Some(instancehandle) = current_metasound.instancehandle.as_mut() {
                         if let Some(active_soundhandle) = current_metasound.soundhandle.as_mut() {
                             let cur_pos = instancehandle.position();
                             let len = active_soundhandle.duration();
                             let progress = (cur_pos / len) as f32;
-                            if let Some(pos) = ui
-                                .add(
-                                    egui::ProgressBar::new(progress)
-                                        .text(format!("-{:.1}s", len - cur_pos)),
-                                )
-                                .interact_pointer_pos()
-                            {
-                                dbg!(pos);
-                            }
+
+                            if let Some(pos) = scrubber(ui, progress)
+                            .interact_pointer_pos()
+                        {
+                            let w = ui.available_size().x;
+                            let p = pos.x;
+                            let fac = (p/w) as f64;
+                            let _ = instancehandle.seek_to(fac * len);
+                        }
+
 
                             ui.horizontal(|ui| {
-                                // TODO: disable button
 
                                 if ui
                                     .add(egui::Button::new("⏮").enabled(*queue_index != 0))
@@ -297,5 +298,19 @@ impl epi::App for ApplicationState {
         egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
     }
 }
+
+
+/// The scrollbar / scrub bar
+pub fn scrubber(ui: &mut Ui, scale: f32) -> Response{
+    let mut dim = ui.available_rect_before_wrap_finite();
+    let x = ui.allocate_rect(dim, Sense::click());
+    let radius = 4.;
+    dim.set_height(ui.spacing().interact_size.y);
+    ui.painter().rect(dim, radius, ui.style().visuals.extreme_bg_color, Stroke::default());
+    dim.set_width(dim.width()*scale);
+    ui.painter().rect(dim, radius, Color32::from_rgb(10, 100, 0), Stroke::default());
+    x
+}
+
 
 // fn playlist_ui(ui: &mut Ui, state: &mut ApplicationState) {}
