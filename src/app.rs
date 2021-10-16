@@ -67,6 +67,8 @@ impl epi::App for ApplicationState {
         _frame: &mut epi::Frame<'_>,
         storage: Option<&dyn epi::Storage>,
     ) {
+        use eframe::egui::{FontDefinitions, FontFamily, TextStyle};
+
         if let Some(storage) = storage {
             let storage: ApplicationState =
                 epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
@@ -82,6 +84,32 @@ impl epi::App for ApplicationState {
         style.visuals.selection.bg_fill = main_col;
         // style.visuals.widgets.noninteractive.bg_fill = main_col;
         ctx.set_style(style);
+
+        let mut fonts = FontDefinitions::default();
+
+        // Install my own font (maybe supporting non-latin characters):
+        fonts.font_data.insert(
+            "my_font".to_owned(),
+            std::borrow::Cow::Borrowed(include_bytes!("IBMPlexSans-Regular.ttf")),
+        ); // .ttf and .otf supported
+
+        // Put my font first (highest priority):
+        fonts
+            .fonts_for_family
+            .get_mut(&FontFamily::Proportional)
+            .unwrap()
+            .insert(0, "my_font".to_owned());
+
+        fonts.family_and_size.insert(
+            TextStyle::Body,
+            (FontFamily::Proportional, 18.0)
+        );
+        fonts.family_and_size.insert(
+            TextStyle::Button,
+            (FontFamily::Proportional, 18.0)
+        );
+
+        ctx.set_fonts(fonts);
 
         // Parse arguments to auto-play sound
         let args = Opt::from_args();
@@ -129,7 +157,7 @@ impl epi::App for ApplicationState {
             favourites,
             play_count,
         } = self;
-        
+
         // Repaint every frame to update progress bar etc
         ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {

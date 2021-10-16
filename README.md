@@ -16,9 +16,12 @@ Formats supported:
 
 TODO:
 
-- [ ] Bookmark support for individual files (For multiple audiobooks) 
+- [ ] Bookmark support for individual files (For multiple audiobooks)
+- [ ] Play count
+- [ ] Favorites
+- [ ] Themes
 - [ ] Preload next song 
 - [ ] Recursively add dropped folders
-- [ ] Auto-build for mac,win and linux
+- [X] Auto-build for mac,win and linux
 - [X] Drag and drop files into window
 - [x] Scrub through songs
