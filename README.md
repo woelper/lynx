@@ -3,7 +3,7 @@
 
 This is a for-fun minimal audio player. It's written as a challenge to replicate something that works like xmms or winamp in Rust.
 
-
+![screenshot](screenshot.png)
 
 Features:
 - playlist

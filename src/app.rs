@@ -1,5 +1,7 @@
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+use eframe::egui::{CursorIcon, Id, LayerId, Order};
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::manager::AudioManagerSettings;
 use kira::{
@@ -33,6 +35,9 @@ pub struct ApplicationState {
     volume: f64,
     queue: SoundQueue,
     queue_index: usize,
+    play_count: HashMap<PathBuf, usize>,
+    favourites: HashSet<PathBuf>,
+    bookmarks: HashSet<MetaSound>,
 }
 
 impl Default for ApplicationState {
@@ -43,6 +48,9 @@ impl Default for ApplicationState {
             volume: 1.0,
             queue: vec![],
             queue_index: 0,
+            play_count: HashMap::default(),
+            favourites: HashSet::default(),
+            bookmarks: HashSet::default(),
         }
     }
 }
@@ -65,7 +73,15 @@ impl epi::App for ApplicationState {
             *self = storage;
         }
 
+        let main_col = Color32::from_rgb(255, 144, 144);
         ctx.set_visuals(egui::Visuals::light());
+        let mut style: egui::Style = (*ctx.style()).clone();
+        style.visuals.widgets.inactive.bg_fill = main_col;
+        style.visuals.widgets.active.bg_fill = main_col;
+        style.visuals.widgets.open.bg_fill = main_col;
+        style.visuals.selection.bg_fill = main_col;
+        // style.visuals.widgets.noninteractive.bg_fill = main_col;
+        ctx.set_style(style);
 
         // Parse arguments to auto-play sound
         let args = Opt::from_args();
@@ -109,12 +125,15 @@ impl epi::App for ApplicationState {
             volume,
             queue,
             queue_index,
+            bookmarks,
+            favourites,
+            play_count,
         } = self;
-
+        
         // Repaint every frame to update progress bar etc
         ctx.request_repaint();
-
         egui::CentralPanel::default().show(ctx, |ui| {
+            // ctx.style_ui(ui);
             // Handle dropped files. TODO: On dir drop, add recursively
             if !ctx.input().raw.dropped_files.is_empty() {
                 for file in ctx
@@ -145,7 +164,11 @@ impl epi::App for ApplicationState {
 
                 if let Some(manager) = manager {
                     if ui
-                        .add(egui::Slider::new(volume, 0.0..=3.0).text("🔈"))
+                        .add(
+                            egui::Slider::new(volume, 0.0..=3.0)
+                                .text("🔈")
+                                .show_value(false),
+                        )
                         .changed()
                     {
                         let _ = manager.main_track().set_volume(*volume as f64);
@@ -203,56 +226,21 @@ impl epi::App for ApplicationState {
                                     .clicked()
                                 {
                                     *queue_index += 1;
-                                    // current_metasound.stop();
-                                    // assign queue sound as active
-                                    // *active_sound = queue.get(*queue_index).map(|s| s.load_soundhandle(manager));
-                                    // let _ = active_sound.as_mut().map(|s| s.play());
                                 }
                             });
                         } else {
                             ui.label("No active sound handle");
                         }
                     } else {
+                        // There is no active instance handle, offer to play
                         ui.label("No active sound instance");
+                        if ui.button("▶").clicked() {
+                            play_from_queue(active_sound, queue, queue_index, manager);
+                        }
                     }
 
-
-                    ui.label(format!("q len {}", queue.len()));
                     //playlist
-                    ui.vertical_centered_justified(|ui| {
-                        for (i, sound) in queue.clone().iter().enumerate() {
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .selectable_label(*queue_index == i, &sound.name)
-                                    .double_clicked()
-                                {
-                                    // update index to current
-                                    *queue_index = i;
-                                    // stop current sound
-                                    let _ = active_sound.as_mut().map(|s| s.stop());
-                                    // assign queue sound as active
-                                    *active_sound = queue
-                                        .get(*queue_index)
-                                        .map(|s| s.load_soundhandle(manager));
-                                    let _ = active_sound.as_mut().map(|s| s.play());
-                                }
-                                if i != 0 {
-                                    if ui.button("up").clicked() {
-                                        queue.swap(i - 1, i);
-                                    }
-                                }
-                                if ui.button("dn").clicked() {
-                                    queue.swap(i + 1, i);
-                                }
-                                if ui.button("🗙").clicked() {
-                                    queue.remove(i);
-                                    if queue_index < &mut (queue.len() - 1) {
-                                        *queue_index = 0;
-                                    }
-                                }
-                            });
-                        }
-                    });
+                    playlist_ui(queue, queue_index, active_sound, manager, ui)
 
                     // playlist_ui()
                 } else {
@@ -292,7 +280,7 @@ pub fn scrubber(ui: &mut Ui, scale: f32) -> Response {
     let mut dim = ui.available_rect_before_wrap_finite();
     dim.set_height(ui.spacing().interact_size.y);
     let x = ui.allocate_rect(dim, Sense::click());
-    let radius = 4.;
+    let radius = ui.style().visuals.widgets.active.corner_radius;
     ui.painter().rect(
         dim,
         radius,
@@ -303,10 +291,85 @@ pub fn scrubber(ui: &mut Ui, scale: f32) -> Response {
     ui.painter().rect(
         dim,
         radius,
-        Color32::from_rgb(10, 100, 0),
+        ui.style().visuals.widgets.active.bg_fill,
         Stroke::default(),
     );
     x
 }
 
-// fn playlist_ui(ui: &mut Ui, state: &mut ApplicationState) {}
+fn playlist_ui(
+    queue: &mut SoundQueue,
+    queue_index: &mut usize,
+    active_sound: &mut Option<MetaSound>,
+    manager: &mut AudioManager,
+    ui: &mut Ui,
+) {
+    ui.vertical_centered_justified(|ui| {
+        let mut drag_index: Option<usize> = None;
+        let mut drop_index: Option<usize> = None;
+        // if ui.button("clr").clicked() {
+        //     queue.clear();
+        // }
+        for (i, sound) in queue.clone().iter().enumerate() {
+            let pl_item = ui
+                .selectable_label(*queue_index == i, &sound.name)
+                .interact(egui::Sense::click_and_drag());
+
+            if pl_item.drag_released() {
+                drag_index = Some(i);
+            }
+
+            if pl_item.dragged() {
+                ui.output().cursor_icon = CursorIcon::Grabbing;
+
+                // Paint the body to a new layer:
+                let layer_id = LayerId::new(Order::Tooltip, pl_item.id);
+                let response = ui
+                    .with_layer_id(layer_id, |ui| ui.label("we got a dragger"))
+                    .response;
+
+                if let Some(pointer_pos) = ui.input().pointer.interact_pos() {
+                    let delta = pointer_pos - response.rect.center();
+                    // dbg!(&delta.y);
+                    ui.ctx().translate_layer(layer_id, delta);
+                }
+            }
+
+            if pl_item.double_clicked() {
+                // update index to current
+                *queue_index = i;
+                // stop current sound
+                // let _ = active_sound.as_mut().map(|s| s.stop());
+                // assign queue sound as active
+                // *active_sound = queue.get(*queue_index).map(|s| s.load_soundhandle(manager));
+                // let _ = active_sound.as_mut().map(|s| s.play());
+                play_from_queue(active_sound, queue, queue_index, manager)
+            }
+
+            if pl_item.hovered() {
+                drop_index = Some(i);
+            }
+        }
+
+        if ui.input().pointer.any_released() {
+            // swap
+            dbg!(drag_index, drop_index);
+            if let (Some(drag), Some(drop)) = (drag_index, drop_index) {
+                let elem = queue.remove(drag);
+                queue.insert(drop, elem);
+                // queue.swap(drag, drop);
+            }
+        }
+    });
+}
+
+pub fn play_from_queue(
+    sound: &mut Option<MetaSound>,
+    queue: &mut SoundQueue,
+    queue_index: &mut usize,
+    manager: &mut AudioManager,
+) {
+    let _ = sound.as_mut().map(|s| s.stop());
+    *sound = queue.get(*queue_index).map(|s| s.load_soundhandle(manager));
+    let _ = sound.as_mut().map(|s| s.play());
+}

@@ -7,6 +7,8 @@ use kira::{
 
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -47,7 +49,21 @@ pub struct MetaSound {
     pub soundhandle: Option<SoundHandle>,
     #[serde(skip)]
     pub instancehandle: Option<InstanceHandle>,
-    // pub instancehandle: Option<Arc<InstanceHandle>>,
+    bookmarks: Vec<f64>,
+}
+
+impl PartialEq for MetaSound {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
+impl Eq for MetaSound {}
+
+impl Hash for MetaSound {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.path.hash(hasher);
+    }
 }
 
 impl MetaSound {
