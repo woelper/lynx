@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-use eframe::egui::{CursorIcon, Id, LayerId, Order};
+use eframe::egui::{CursorIcon, Id, LayerId, Order, Rect, Vec2};
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::manager::AudioManagerSettings;
 use kira::{
@@ -79,8 +79,6 @@ impl epi::App for ApplicationState {
 
         let theme = Theme::Red;
         theme.apply(ctx);
-
-        
 
         // Parse arguments to auto-play sound
         let args = Opt::from_args();
@@ -310,6 +308,7 @@ fn playlist_ui(
         //     queue.clear();
         // }
         for (i, sound) in queue.clone().iter().enumerate() {
+            // the laylist entry widget
             let pl_item = ui
                 .selectable_label(*queue_index == i, &sound.name)
                 .interact(egui::Sense::click_and_drag());
@@ -324,12 +323,22 @@ fn playlist_ui(
                 // Paint the body to a new layer:
                 let layer_id = LayerId::new(Order::Tooltip, pl_item.id);
                 let response = ui
-                    .with_layer_id(layer_id, |ui| ui.label("we got a dragger"))
+                    .with_layer_id(layer_id, |ui| {
+                        ui.add_sized(
+                            [40.0, 0.0],
+                            egui::Label::new(&sound.name)
+                                .background_color(Color32::from_rgba_premultiplied(0, 0, 0, 50)),
+                        );
+                        // ui.put(Rect::NOTHING, egui::Label::new("SDSDSDD"));
+                        // // let r = ui.allocate_exact_size(Vec2::ZERO, Sense::click_and_drag());
+                        // ui.add_sized(Vec2::ZERO, |ui| {
+                        //     ui.label(&sound.name);
+                        // });
+                    })
                     .response;
 
                 if let Some(pointer_pos) = ui.input().pointer.interact_pos() {
                     let delta = pointer_pos - response.rect.center();
-                    // dbg!(&delta.y);
                     ui.ctx().translate_layer(layer_id, delta);
                 }
             }
@@ -337,11 +346,6 @@ fn playlist_ui(
             if pl_item.double_clicked() {
                 // update index to current
                 *queue_index = i;
-                // stop current sound
-                // let _ = active_sound.as_mut().map(|s| s.stop());
-                // assign queue sound as active
-                // *active_sound = queue.get(*queue_index).map(|s| s.load_soundhandle(manager));
-                // let _ = active_sound.as_mut().map(|s| s.play());
                 play_from_queue(active_sound, queue, queue_index, manager)
             }
 

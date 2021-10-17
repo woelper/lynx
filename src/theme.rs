@@ -2,14 +2,13 @@ use eframe::egui::{self, Color32, FontDefinitions, FontFamily, TextStyle};
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
-
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 
 pub enum Theme {
     EguiLight,
     EguiDark,
     Red,
-    Grey
+    Grey,
 }
 
 impl Default for Theme {
@@ -45,14 +44,12 @@ impl Theme {
             .unwrap()
             .insert(0, "my_font".to_owned());
 
-        fonts.family_and_size.insert(
-            TextStyle::Body,
-            (FontFamily::Proportional, 18.0)
-        );
-        fonts.family_and_size.insert(
-            TextStyle::Button,
-            (FontFamily::Proportional, 18.0)
-        );
+        fonts
+            .family_and_size
+            .insert(TextStyle::Body, (FontFamily::Proportional, 18.0));
+        fonts
+            .family_and_size
+            .insert(TextStyle::Button, (FontFamily::Proportional, 18.0));
 
         ctx.set_fonts(fonts);
     }
