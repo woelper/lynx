@@ -69,47 +69,18 @@ impl epi::App for ApplicationState {
     ) {
         use eframe::egui::{FontDefinitions, FontFamily, TextStyle};
 
+        use crate::theme::Theme;
+
         if let Some(storage) = storage {
             let storage: ApplicationState =
                 epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
             *self = storage;
         }
 
-        let main_col = Color32::from_rgb(255, 144, 144);
-        ctx.set_visuals(egui::Visuals::light());
-        let mut style: egui::Style = (*ctx.style()).clone();
-        style.visuals.widgets.inactive.bg_fill = main_col;
-        style.visuals.widgets.active.bg_fill = main_col;
-        style.visuals.widgets.open.bg_fill = main_col;
-        style.visuals.selection.bg_fill = main_col;
-        // style.visuals.widgets.noninteractive.bg_fill = main_col;
-        ctx.set_style(style);
+        let theme = Theme::Red;
+        theme.apply(ctx);
 
-        let mut fonts = FontDefinitions::default();
-
-        // Install my own font (maybe supporting non-latin characters):
-        fonts.font_data.insert(
-            "my_font".to_owned(),
-            std::borrow::Cow::Borrowed(include_bytes!("IBMPlexSans-Regular.ttf")),
-        ); // .ttf and .otf supported
-
-        // Put my font first (highest priority):
-        fonts
-            .fonts_for_family
-            .get_mut(&FontFamily::Proportional)
-            .unwrap()
-            .insert(0, "my_font".to_owned());
-
-        fonts.family_and_size.insert(
-            TextStyle::Body,
-            (FontFamily::Proportional, 18.0)
-        );
-        fonts.family_and_size.insert(
-            TextStyle::Button,
-            (FontFamily::Proportional, 18.0)
-        );
-
-        ctx.set_fonts(fonts);
+        
 
         // Parse arguments to auto-play sound
         let args = Opt::from_args();
