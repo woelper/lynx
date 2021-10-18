@@ -336,9 +336,9 @@ fn playlist_ui(
         ui.vertical_centered_justified(|ui| {
             let mut drag_index: Option<usize> = None;
             let mut drop_index: Option<usize> = None;
-            // if ui.button("clr").clicked() {
-            //     queue.clear();
-            // }
+            if ui.button("clr").clicked() {
+                queue.clear();
+            }
             for (i, sound) in queue.clone().iter().enumerate() {
                 // the laylist entry widget
                 let pl_item = ui
@@ -350,8 +350,6 @@ fn playlist_ui(
                 }
 
                 if pl_item.double_clicked() {
-                    // update index to current
-                    // *queue_index = i;
                     play_as_active(active_sound, sound, manager, play_count);
                 }
 
@@ -403,10 +401,6 @@ fn playlist_ui(
                 if let (Some(drag), Some(drop)) = (drag_index, drop_index) {
                     let elem = queue.remove(drag);
                     queue.insert(drop, elem);
-                    // we changed order of the queue, let's update the index
-                    // if let Some(sound) = active_sound {
-                    //     *queue_index = queue.has_elem(sound).unwrap_or(0);
-                    // }
                 }
             }
         });
@@ -486,9 +480,25 @@ fn bookmark_ui(
         for s in bookmarks.iter() {
             ui.label(&s.name);
             ui.horizontal(|ui| {
-
                 for b in &s.bookmarks {
-                    ui.button(format!("{:.1}", b));
+                    if ui.button(format!("{:.1}", b)).clicked() {
+                        if let Some(active) = active_sound {
+                            //check if current sound is the one referenced in bookmark
+                            if active == s {
+                                if let Some(instancehandle) = active.instancehandle.as_mut() {
+                                    instancehandle.seek_to(*b);
+                                }
+                            } else {
+                                active.stop();
+                                *active = s.clone();
+                                active.soundhandle = active.load(manager).ok();
+                                active.play();
+                                if let Some(instancehandle) = active.instancehandle.as_mut() {
+                                    instancehandle.seek_to(*b);
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }

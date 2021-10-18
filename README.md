@@ -6,7 +6,10 @@ This is a for-fun minimal audio player. It's written as a challenge to replicate
 ![screenshot](screenshot.png)
 
 Features:
-- playlist
+- Playlist
+- Bookmarks within individual songs -  helpful to bookmark multiple individual audiobooks
+- Favourite list
+- Play count is recorded
 
 Formats supported:
 - wav
@@ -17,11 +20,11 @@ Formats supported:
 TODO:
 
 - [ ] Bookmark support for individual files (For multiple audiobooks)
-- [ ] Play count
-- [ ] Favorites
 - [ ] Themes
 - [ ] Preload next song 
 - [ ] Recursively add dropped folders
+- [X] Favorites
+- [X] Play count
 - [X] Auto-build for mac,win and linux
 - [X] Drag and drop files into window
 - [x] Scrub through songs
