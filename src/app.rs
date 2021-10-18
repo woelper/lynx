@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use crate::theme::Theme;
-use eframe::egui::{CursorIcon, Id, LayerId, Order, Rect, Vec2};
+use eframe::egui::{CursorIcon, LayerId, Order};
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::manager::AudioManagerSettings;
 use kira::{
@@ -141,7 +141,7 @@ impl epi::App for ApplicationState {
 
             if let Some(manager) = manager {
                 if let Some(current_metasound) = active_sound {
-                    ui.label(format!("{}", current_metasound.name,));
+                    ui.label(&current_metasound.name);
                     if ui
                         .add(
                             egui::Slider::new(volume, 0.0..=3.0)
@@ -196,11 +196,10 @@ impl epi::App for ApplicationState {
                     if let Some(current_metasound) = active_sound {
                         if let Some(instancehandle) = current_metasound.instancehandle.as_mut() {
                             if let Some(soundhandle) = current_metasound.soundhandle.as_mut() {
-                                
                                 // done playing?
                                 debug!("{}", instancehandle.position() - soundhandle.duration());
                                 if instancehandle.position() - soundhandle.duration() > -0.05 {
-                                    if let Some(i) = queue.to_index(&current_metasound) {
+                                    if let Some(i) = queue.to_index(current_metasound) {
                                         let ri = (i + 1).min(queue.len() - 1);
                                         play_as_active(
                                             active_sound,
@@ -262,7 +261,7 @@ impl epi::App for ApplicationState {
                             )
                             .clicked()
                         {
-                            if let Some(i) = queue.to_index(&current_metasound) {
+                            if let Some(i) = queue.to_index(current_metasound) {
                                 let ri = (i + 1).min(queue.len() - 1);
                                 play_as_active(active_sound, &queue[ri], manager, play_count);
                             }
@@ -325,6 +324,17 @@ impl epi::App for ApplicationState {
         // `transparent()` option they get immediate results.
         egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
     }
+}
+
+pub fn play_as_active(
+    active_sound: &mut Option<MetaSound>,
+    sound: &MetaSound,
+    manager: &mut AudioManager,
+    counter: &mut HashMap<MetaSound, usize>,
+) {
+    let _ = active_sound.as_mut().map(|s| s.stop());
+    let _ = active_sound.as_mut().map(|s| s.play_load_mut(manager));
+    *counter.entry(sound.clone()).or_insert(0) += 1;
 }
 
 /// The scrollbar / scrub bar
@@ -442,7 +452,7 @@ fn playcount_ui(
         // for s in counter
         let mut sorted = counter
             .iter()
-            .map(|x| (x.0.clone(), x.1.clone()))
+            .map(|x| (x.0.clone(), *x.1))
             .collect::<Vec<_>>();
         sorted.sort_by_key(|a| a.1);
         sorted.reverse();
@@ -459,20 +469,6 @@ fn playcount_ui(
     });
 }
 
-pub fn play_as_active(
-    active_sound: &mut Option<MetaSound>,
-    sound: &MetaSound,
-    manager: &mut AudioManager,
-    counter: &mut HashMap<MetaSound, usize>,
-) {
-    let _ = active_sound.as_mut().map(|s| s.stop());
-    *active_sound = Some(sound.load_soundhandle(manager));
-    let ih = active_sound.as_mut().map(|s| s.play());
-    info!("{:?}", ih);
-
-    *counter.entry(sound.clone()).or_insert(0) += 1;
-}
-
 fn favourite_ui(
     // queue_index: &mut usize,
     active_sound: &mut Option<MetaSound>,
@@ -482,12 +478,12 @@ fn favourite_ui(
     ui: &mut Ui,
 ) {
     ui.collapsing("♡ Favourites", |ui| {
-        for f in favourites.iter() {
+        for favsound in favourites.iter() {
             ui.horizontal(|ui| {
                 if ui.button("▶").clicked() {
-                    play_as_active(active_sound, &f, manager, counter);
+                    play_as_active(active_sound, favsound, manager, counter);
                 }
-                ui.label(&f.name);
+                ui.label(&favsound.name);
             });
         }
     });
@@ -515,8 +511,7 @@ fn bookmark_ui(
                             } else {
                                 active.stop();
                                 *active = s.clone();
-                                active.soundhandle = active.load(manager).ok();
-                                let _ = active.play();
+                                let _ = active.play_load_mut(manager);
                                 if let Some(instancehandle) = active.instancehandle.as_mut() {
                                     let _ = instancehandle.seek_to(*b);
                                 }

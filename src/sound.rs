@@ -1,6 +1,6 @@
-use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
+use kira::instance::{InstanceSettings, StopInstanceSettings};
 use kira::{
-    instance::{handle::InstanceHandle, PauseInstanceSettings, ResumeInstanceSettings},
+    instance::handle::InstanceHandle,
     manager::AudioManager,
     sound::{handle::SoundHandle, SoundSettings},
 };
@@ -21,10 +21,10 @@ use anyhow::{anyhow, Error, Result};
 pub type SoundQueue = Vec<MetaSound>;
 
 pub trait Playlist {
-    fn contains(&self, sound: &MetaSound) -> bool {
+    fn contains(&self, _sound: &MetaSound) -> bool {
         unimplemented!()
     }
-    fn to_index(&self, sound: &MetaSound) -> Option<usize> {
+    fn to_index(&self, _sound: &MetaSound) -> Option<usize> {
         unimplemented!()
     }
 }
@@ -92,7 +92,7 @@ impl MetaSound {
     pub fn with_path<P: AsRef<Path>>(&self, path: P) -> Self {
         Self {
             path: path.as_ref().into(),
-            name: nice_name(&path.as_ref()),
+            name: nice_name(path.as_ref()),
             ..self.clone()
         }
     }
@@ -129,13 +129,14 @@ impl MetaSound {
         Ok(())
     }
 
-    // pub fn load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
-    //     self.soundhandle = self.load(manager).ok();
-    //     if let Some(handle) = &self.soundhandle {
-    //         self.duration = Duration::from_secs_f64(handle.duration());
-    //     }
-    //     Ok(())
-    // }
+    pub fn play_load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
+        self.soundhandle = self.load(manager).ok();
+        if let Some(handle) = &self.soundhandle {
+            self.duration = Duration::from_secs_f64(handle.duration());
+        }
+        self.play()?;
+        Ok(())
+    }
 
     pub fn stop(&mut self) {
         if let Some(h) = &mut self.soundhandle {
@@ -145,12 +146,9 @@ impl MetaSound {
 }
 
 pub fn nice_name(p: &Path) -> String {
-    format!(
-        "{}",
-        p.file_name()
-            .unwrap_or(OsStr::new("no path"))
-            .to_string_lossy()
-            .replace("_", " ")
-            .replace("-", " ")
-    )
+    p.file_name()
+        .unwrap_or(OsStr::new("no path"))
+        .to_string_lossy()
+        .replace("_", " ")
+        .replace("-", " ")
 }
