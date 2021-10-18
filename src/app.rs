@@ -117,7 +117,6 @@ impl epi::App for ApplicationState {
             active_sound,
             volume,
             queue,
-            // queue_index,
             bookmarks,
             favourites,
             play_count,
@@ -162,6 +161,7 @@ impl epi::App for ApplicationState {
                             let len = soundhandle.duration();
                             let progress = (cur_pos / len) as f32;
 
+                            // current_metasound.soundhandle.unwrap().
                             let response = scrubber(ui, progress);
                             if ui.input().pointer.any_pressed() {
                                 if let Some(pos) = response.interact_pointer_pos() {
@@ -196,6 +196,28 @@ impl epi::App for ApplicationState {
                     if let Some(current_metasound) = active_sound {
                         if let Some(instancehandle) = current_metasound.instancehandle.as_mut() {
                             if let Some(soundhandle) = current_metasound.soundhandle.as_mut() {
+                                
+                                // done playing?
+                                debug!("{}", instancehandle.position() - soundhandle.duration());
+                                if instancehandle.position() - soundhandle.duration() > -0.05 {
+                                    if let Some(i) = queue.to_index(&current_metasound) {
+                                        let ri = (i + 1).min(queue.len() - 1);
+                                        play_as_active(
+                                            active_sound,
+                                            &queue[ri],
+                                            manager,
+                                            play_count,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // info about current song
+                    if let Some(current_metasound) = active_sound {
+                        if let Some(instancehandle) = current_metasound.instancehandle.as_mut() {
+                            if let Some(soundhandle) = current_metasound.soundhandle.as_mut() {
                                 match instancehandle.state() {
                                     InstanceState::Playing => {
                                         if ui.button("⏸").clicked() {
@@ -209,7 +231,6 @@ impl epi::App for ApplicationState {
                                         if ui.button("▶").clicked() {
                                             let _ =
                                                 soundhandle.resume(ResumeInstanceSettings::new());
-                                            // active_sound.play(InstanceSettings::new()).unwrap();
                                         }
                                         if ui.button("⏹").clicked() {
                                             let _ = soundhandle.stop(StopInstanceSettings::new());
