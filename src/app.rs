@@ -6,7 +6,7 @@ use eframe::egui::{CursorIcon, Id, LayerId, Order, Rect, Vec2};
 use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::manager::AudioManagerSettings;
 use kira::{
-    instance::{handle::InstanceHandle, PauseInstanceSettings, ResumeInstanceSettings},
+    instance::{PauseInstanceSettings, ResumeInstanceSettings},
     manager::AudioManager,
 };
 use log::{debug, info};
@@ -162,11 +162,14 @@ impl epi::App for ApplicationState {
                             let len = soundhandle.duration();
                             let progress = (cur_pos / len) as f32;
 
-                            if let Some(pos) = scrubber(ui, progress).interact_pointer_pos() {
-                                let w = ui.available_size().x;
-                                let p = pos.x;
-                                let fac = (p / w) as f64;
-                                let _ = instancehandle.seek_to(fac * len);
+                            let response = scrubber(ui, progress);
+                            if ui.input().pointer.any_pressed() {
+                                if let Some(pos) = response.interact_pointer_pos() {
+                                    let w = ui.available_size().x;
+                                    let p = pos.x;
+                                    let fac = (p / w) as f64;
+                                    let _ = instancehandle.seek_to(fac * len);
+                                }
                             }
                         }
                     }
@@ -486,15 +489,15 @@ fn bookmark_ui(
                             //check if current sound is the one referenced in bookmark
                             if active == s {
                                 if let Some(instancehandle) = active.instancehandle.as_mut() {
-                                    instancehandle.seek_to(*b);
+                                    let _ = instancehandle.seek_to(*b);
                                 }
                             } else {
                                 active.stop();
                                 *active = s.clone();
                                 active.soundhandle = active.load(manager).ok();
-                                active.play();
+                                let _ = active.play();
                                 if let Some(instancehandle) = active.instancehandle.as_mut() {
-                                    instancehandle.seek_to(*b);
+                                    let _ = instancehandle.seek_to(*b);
                                 }
                             }
                         }
