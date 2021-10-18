@@ -12,7 +12,6 @@ use std::hash::Hasher;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
-    sync::Arc,
     time::Duration,
 };
 
@@ -25,11 +24,23 @@ pub trait Playlist {
     fn contains(&self, sound: &MetaSound) -> bool {
         unimplemented!()
     }
+    fn to_index(&self, sound: &MetaSound) -> Option<usize> {
+        unimplemented!()
+    }
 }
 
 impl Playlist for SoundQueue {
     fn contains(&self, sound: &MetaSound) -> bool {
-        self.iter().filter(|s| s.name == sound.name).count() > 0
+        self.iter().filter(|s| *s == sound).count() > 0
+    }
+
+    fn to_index(&self, sound: &MetaSound) -> Option<usize> {
+        for (i, s) in self.iter().enumerate() {
+            if s == sound {
+                return Some(i);
+            }
+        }
+        None
     }
 }
 
@@ -49,7 +60,7 @@ pub struct MetaSound {
     pub soundhandle: Option<SoundHandle>,
     #[serde(skip)]
     pub instancehandle: Option<InstanceHandle>,
-    bookmarks: Vec<f64>,
+    pub bookmarks: Vec<f64>,
 }
 
 impl PartialEq for MetaSound {
@@ -112,20 +123,19 @@ impl MetaSound {
         let soundhandle = self
             .soundhandle
             .as_mut()
-            .ok_or(anyhow!("Sound handle is None"))?;
+            .ok_or(anyhow!("Sound handle is None. Is this sound loaded?"))?;
         let instancehandle = soundhandle.play(InstanceSettings::new())?;
         self.instancehandle = Some(instancehandle);
-        // self.instancehandle = Some(Arc::new(instancehandle));
         Ok(())
     }
 
-    pub fn load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
-        self.soundhandle = self.load(manager).ok();
-        if let Some(handle) = &self.soundhandle {
-            self.duration = Duration::from_secs_f64(handle.duration());
-        }
-        Ok(())
-    }
+    // pub fn load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
+    //     self.soundhandle = self.load(manager).ok();
+    //     if let Some(handle) = &self.soundhandle {
+    //         self.duration = Duration::from_secs_f64(handle.duration());
+    //     }
+    //     Ok(())
+    // }
 
     pub fn stop(&mut self) {
         if let Some(h) = &mut self.soundhandle {

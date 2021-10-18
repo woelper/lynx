@@ -23,6 +23,8 @@ kira = {version = "0.5.3", features = ["serde_support"]}
 # taglib = "1.0.0"
 audiotags = "0.2.7182"
 walkdir = "2.3.2"
+log = "0.4.14"
+env_logger = "0.9.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 fruitbasket = { git = "https://github.com/woelper/fruitbasket", branch = "open-file-support" }
