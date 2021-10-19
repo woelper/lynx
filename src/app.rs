@@ -124,7 +124,9 @@ impl epi::App for ApplicationState {
 
         // Repaint every frame to update progress bar etc
         ctx.request_repaint();
+
         egui::CentralPanel::default().show(ctx, |ui| {
+        
             // Handle dropped files. TODO: On dir drop, add recursively
             if !ctx.input().raw.dropped_files.is_empty() {
                 for file in ctx
@@ -181,7 +183,7 @@ impl epi::App for ApplicationState {
                     if let Some(current_metasound) = active_sound {
                         if ui
                             .add(
-                                egui::Button::new("⏮"), // .enabled(*queue_index != 0)
+                                egui::Button::new("⏮"),
                             )
                             .clicked()
                         {
@@ -199,6 +201,7 @@ impl epi::App for ApplicationState {
                                 // done playing?
                                 debug!("{}", instancehandle.position() - soundhandle.duration());
                                 if instancehandle.position() - soundhandle.duration() > -0.05 {
+                                    info!("Sound has finished playing, next one!");
                                     if let Some(i) = queue.to_index(current_metasound) {
                                         let ri = (i + 1).min(queue.len() - 1);
                                         play_as_active(
@@ -333,6 +336,7 @@ pub fn play_as_active(
     counter: &mut HashMap<MetaSound, usize>,
 ) {
     let _ = active_sound.as_mut().map(|s| s.stop());
+    *active_sound = Some(sound.clone());
     let _ = active_sound.as_mut().map(|s| s.play_load_mut(manager));
     *counter.entry(sound.clone()).or_insert(0) += 1;
 }
@@ -374,7 +378,6 @@ fn playlist_ui(
                 queue.clear();
             }
             for (i, sound) in queue.clone().iter().enumerate() {
-                // the laylist entry widget
                 let pl_item = ui
                     .selectable_label(Some(sound) == active_sound.as_ref(), &sound.name)
                     .interact(egui::Sense::click_and_drag());
