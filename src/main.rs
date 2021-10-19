@@ -1,6 +1,7 @@
 mod app;
 pub mod sound;
 pub mod theme;
+pub mod ui_components;
 use eframe::epi;
 use log::{info, LevelFilter};
 use std::path::PathBuf;
