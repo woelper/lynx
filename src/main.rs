@@ -16,7 +16,7 @@ struct Opt {
     #[structopt(name = "files", parse(from_os_str))]
     files: Vec<PathBuf>,
     /// Bypass mac "open with" behaviour
-    #[structopt(short, long)]
+    #[structopt(short = "c")]
     chainload: bool
 }
 
@@ -25,10 +25,10 @@ fn main() {
     info!("Starting up");
 
     let args = Opt::from_args();
-    info!("{:?}", args);
+    info!("Startup args {:?}", args);
 
     #[cfg(target_os = "macos")]
-    if !args.chainload && files.is_empty() {
+    if !args.chainload && args.files.is_empty() {
         info!("Chainload not specified, and no input file present. Invoking mac hack.");
         // MacOS needs an incredible dance performed just to open a file
         let _ = mac::launch();

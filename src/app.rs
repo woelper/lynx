@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use eframe::egui;
+use structopt::StructOpt;
 
 use crate::theme::Theme;
 use crate::ui_components::*;
@@ -16,18 +17,11 @@ use super::sound::*;
 use eframe::{
     epi,
 };
-use structopt::StructOpt;
+
 
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "basic")]
-struct Opt {
-    /// Files to process
-    #[structopt(name = "files", parse(from_os_str))]
-    files: Vec<PathBuf>,
-}
 
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 pub struct ApplicationState {
@@ -49,7 +43,6 @@ impl Default for ApplicationState {
             active_sound: None,
             volume: 1.0,
             queue: vec![],
-            // queue_index: 0,
             play_count: HashMap::default(),
             favourites: HashSet::default(),
             bookmarks: HashSet::default(),
@@ -70,6 +63,7 @@ impl epi::App for ApplicationState {
         storage: Option<&dyn epi::Storage>,
     ) {
 
+
         if let Some(storage) = storage {
             let storage: ApplicationState =
                 epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
@@ -80,7 +74,7 @@ impl epi::App for ApplicationState {
         theme.apply(ctx);
 
         // Parse arguments to auto-play sound
-        let args = Opt::from_args();
+        let args = super::Opt::from_args();
 
         // Create an AudioManager
         self.audiomanager = AudioManager::new(AudioManagerSettings::default()).ok();
