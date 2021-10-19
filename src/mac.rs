@@ -25,7 +25,7 @@ pub fn launch() -> Result<(), Box<dyn Error>> {
         }),
     );
 
-    // clone file_arg to muve it into closure
+    // clone file_arg to move it into closure
     let farg = file_arg.clone();
     let stopper = app.stopper();
     app.register_callback(
@@ -42,7 +42,7 @@ pub fn launch() -> Result<(), Box<dyn Error>> {
     // Run 'forever', until the URL callback fires
     let _ = app.run(RunPeriod::Forever);
 
-    // Now it gets real ugly: Chainload this executable and quit, passing the received fil as arg
+    // Now it gets real ugly: Chainload this executable and quit, passing the received file as arg
     if let Ok(program_exe) = std::env::current_exe() {
         match file_arg.lock().unwrap().as_ref() {
             Some(f) => {
