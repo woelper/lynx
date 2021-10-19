@@ -1,9 +1,9 @@
 mod app;
+#[cfg(target_os = "macos")]
+mod mac;
 pub mod sound;
 pub mod theme;
 pub mod ui_components;
-#[cfg(target_os = "macos")]
-mod mac;
 use eframe::epi;
 use log::{info, LevelFilter};
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ struct Opt {
     files: Vec<PathBuf>,
     /// Bypass mac "open with" behaviour
     #[structopt(short = "c")]
-    chainload: bool
+    chainload: bool,
 }
 
 fn main() {

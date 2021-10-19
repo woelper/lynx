@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use eframe::egui::{Color32, CursorIcon, Label, LayerId, Order, Response, Sense, Stroke, Ui};
+use eframe::egui::{
+    Color32, CursorIcon, Label, LayerId, Order, Response, SelectableLabel, Sense, Stroke, Ui, Vec2,
+};
 use kira::manager::AudioManager;
 
 use crate::sound::{MetaSound, SoundQueue};
@@ -16,63 +18,72 @@ pub fn playlist_ui(
         ui.vertical_centered_justified(|ui| {
             let mut drag_index: Option<usize> = None;
             let mut drop_index: Option<usize> = None;
-            if ui.button("clr").clicked() {
-                queue.clear();
-            }
+            // if ui.button("clr").clicked() {
+            //     queue.clear();
+            // }
             for (i, sound) in queue.clone().iter().enumerate() {
-                let pl_item = ui
-                    .selectable_label(Some(sound) == active_sound.as_ref(), &sound.name)
-                    .interact(Sense::click_and_drag());
+                ui.horizontal(|ui| {
+                    let pl_item = ui
+                        .selectable_label(Some(sound) == active_sound.as_ref(), &sound.name)
+                        .interact(Sense::click_and_drag());
 
-                if pl_item.drag_released() {
-                    drag_index = Some(i);
-                }
-
-                if pl_item.double_clicked() {
-                    play_as_active(active_sound, sound, manager, play_count);
-                }
-
-                if pl_item.dragged() {
-                    // discard small drags, otherwise it looks awkward on double clicks
-                    let mut dist = 0.0;
-                    if let Some(pointer_pos) = ui.input().pointer.interact_pos() {
-                        if let Some(orig) = ui.input().pointer.press_origin() {
-                            dist = pointer_pos.distance(orig);
-                        }
+                    if pl_item.drag_released() {
+                        drag_index = Some(i);
                     }
 
-                    // Just a small distance to ensure user has moved a meaningful amount
-                    if dist > 5.2 {
-                        ui.output().cursor_icon = CursorIcon::Grabbing;
+                    if pl_item.double_clicked() {
+                        play_as_active(active_sound, sound, manager, play_count);
+                    }
 
-                        // Paint the body to a new layer:
-                        let layer_id = LayerId::new(Order::Tooltip, pl_item.id);
-                        let response = ui
-                            .with_layer_id(layer_id, |ui| {
-                                ui.add_sized(
-                                    [40.0, 0.0],
-                                    Label::new(&sound.name).background_color(
-                                        Color32::from_rgba_premultiplied(0, 0, 0, 50),
-                                    ),
-                                );
-                                // ui.put(Rect::NOTHING, egui::Label::new("SDSDSDD"));
-                                // // let r = ui.allocate_exact_size(Vec2::ZERO, Sense::click_and_drag());
-                                // ui.add_sized(Vec2::ZERO, |ui| {
-                                //     ui.label(&sound.name);
-                                // });
-                            })
-                            .response;
-
+                    if pl_item.dragged() {
+                        // discard small drags, otherwise it looks awkward on double clicks
+                        let mut dist = 0.0;
                         if let Some(pointer_pos) = ui.input().pointer.interact_pos() {
-                            let delta = pointer_pos - response.rect.center();
-                            ui.ctx().translate_layer(layer_id, delta);
+                            if let Some(orig) = ui.input().pointer.press_origin() {
+                                dist = pointer_pos.distance(orig);
+                            }
+                        }
+
+                        // Just a small distance to ensure user has moved a meaningful amount
+                        if dist > 5.2 {
+                            ui.output().cursor_icon = CursorIcon::Grabbing;
+
+                            // Paint the body to a new layer:
+                            let layer_id = LayerId::new(Order::Tooltip, pl_item.id);
+                            let response = ui
+                                .with_layer_id(layer_id, |ui| {
+                                    ui.add_sized(
+                                        [0.0, 0.0],
+                                        Label::new(&sound.name).background_color(
+                                            Color32::from_rgba_premultiplied(0, 0, 0, 50),
+                                        ),
+                                    );
+                                    // ui.put(Rect::NOTHING, egui::Label::new("SDSDSDD"));
+                                    // // let r = ui.allocate_exact_size(Vec2::ZERO, Sense::click_and_drag());
+                                    // ui.add_sized(Vec2::ZERO, |ui| {
+                                    //     ui.label(&sound.name);
+                                    // });
+                                })
+                                .response;
+
+                            if let Some(pointer_pos) = ui.input().pointer.interact_pos() {
+                                let delta = pointer_pos - response.rect.center();
+                                ui.ctx().translate_layer(layer_id, delta);
+                            }
+                        }
+                    } else {
+                        if ui
+                            .add(Label::new("🗙").small().weak().sense(Sense::click()))
+                            .clicked()
+                        {
+                            queue.remove(i);
                         }
                     }
-                }
 
-                if pl_item.hovered() {
-                    drop_index = Some(i);
-                }
+                    if pl_item.hovered() {
+                        drop_index = Some(i);
+                    }
+                });
             }
 
             if ui.input().pointer.any_released() {
@@ -114,7 +125,7 @@ pub fn playcount_ui(
     });
 }
 
-pub  fn favourite_ui(
+pub fn favourite_ui(
     // queue_index: &mut usize,
     active_sound: &mut Option<MetaSound>,
     favourites: &mut HashSet<MetaSound>,
