@@ -5,7 +5,10 @@ use eframe::egui::{
 };
 use kira::manager::AudioManager;
 
-use crate::sound::{MetaSound, SoundQueue};
+use crate::{
+    sound::{MetaSound, SoundQueue},
+    theme::grad_button,
+};
 
 pub fn playlist_ui(
     queue: &mut SoundQueue,
@@ -113,10 +116,10 @@ pub fn playcount_ui(
         sorted.sort_by_key(|a| a.1);
         sorted.reverse();
 
-        for sound in sorted {
+        for sound in &sorted[0..10] {
             ui.horizontal(|ui| {
-                ui.label(format!("{}", sound.1));
-                if ui.button("▶").clicked() {
+                ui.label(format!("{:02}", sound.1));
+                if grad_button("▶", ui).clicked() {
                     play_as_active(active_sound, &sound.0, manager, counter);
                 }
                 ui.label(&sound.0.name);
@@ -136,7 +139,7 @@ pub fn favourite_ui(
     ui.collapsing("♡ Favourites", |ui| {
         for favsound in favourites.iter() {
             ui.horizontal(|ui| {
-                if ui.button("▶").clicked() {
+                if grad_button("▶", ui).clicked() {
                     play_as_active(active_sound, favsound, manager, counter);
                 }
                 ui.label(&favsound.name);
@@ -157,7 +160,7 @@ pub fn bookmark_ui(
             ui.label(&s.name);
             ui.horizontal(|ui| {
                 for b in &s.bookmarks {
-                    if ui.button(format!("{:.1}", b)).clicked() {
+                    if grad_button(format!("{:.1}", b), ui).clicked() {
                         if let Some(active) = active_sound {
                             //check if current sound is the one referenced in bookmark
                             if active == s {

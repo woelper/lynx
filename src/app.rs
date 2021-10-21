@@ -1,4 +1,4 @@
-use eframe::egui::{self, ScrollArea};
+use eframe::egui::{self, DroppedFile, ScrollArea, Vec2};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -111,22 +111,11 @@ impl epi::App for ApplicationState {
             play_count,
         } = self;
         if egui::CentralPanel::default()
-        .show(ctx, |ui| {
-            // ui.ctx().style_ui(ui);
-            ctx.style_ui(ui);
-                
-                // Handle dropped files. TODO: On dir drop, add recursively
+            .show(ctx, |ui| {
+                // ctx.style_ui(ui);
+
                 if !ctx.input().raw.dropped_files.is_empty() {
-                    for file in ctx
-                        .input()
-                        .raw
-                        .dropped_files
-                        .iter()
-                        .filter_map(|d| d.path.as_ref())
-                    {
-                        let s = MetaSound::default().with_path(file).try_meta();
-                        queue.push(s);
-                    }
+                    handle_dropped(&ctx.input().raw.dropped_files, queue);
                 }
 
                 if let Some(manager) = manager {
@@ -325,5 +314,20 @@ impl epi::App for ApplicationState {
         // We use a bit of transparency so that if the user switches on the
         // `transparent()` option they get immediate results.
         egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
+    }
+}
+
+/// Recurse dropped folders
+fn handle_dropped(dropped_files: &Vec<DroppedFile>, queue: &mut SoundQueue) {
+    for p in dropped_files.iter().filter_map(|d| d.path.as_ref()) {
+        if p.is_dir() {
+            for f in walkdir::WalkDir::new(p).into_iter().filter_map(|e| e.ok()).filter(|e| e.path().extension().is_some()) {
+                let s = MetaSound::default().with_path(f.path()).try_meta();
+                queue.push(s);
+            }
+        } else {
+            let s = MetaSound::default().with_path(p).try_meta();
+            queue.push(s);
+        }
     }
 }

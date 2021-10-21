@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, FontDefinitions, FontFamily, TextStyle};
+use eframe::egui::{self, Color32, FontDefinitions, FontFamily, Response, TextStyle, Ui};
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
@@ -53,4 +53,12 @@ impl Theme {
 
         ctx.set_fonts(fonts);
     }
+}
+
+// pub struct GradientButton
+
+pub fn grad_button(text: impl ToString, ui: &mut Ui) -> Response {
+    // ui.image(texture_id, size)
+    // ui.p
+    ui.button(text)
 }
