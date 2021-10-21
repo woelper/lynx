@@ -321,13 +321,21 @@ impl epi::App for ApplicationState {
 fn handle_dropped(dropped_files: &Vec<DroppedFile>, queue: &mut SoundQueue) {
     for p in dropped_files.iter().filter_map(|d| d.path.as_ref()) {
         if p.is_dir() {
-            for f in walkdir::WalkDir::new(p).into_iter().filter_map(|e| e.ok()).filter(|e| e.path().extension().is_some()) {
+            for f in walkdir::WalkDir::new(p)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().is_some())
+            {
                 let s = MetaSound::default().with_path(f.path()).try_meta();
-                queue.push(s);
+                if s.is_supported() {
+                    queue.push(s);
+                }
             }
         } else {
             let s = MetaSound::default().with_path(p).try_meta();
-            queue.push(s);
+            if s.is_supported() {
+                queue.push(s);
+            }
         }
     }
 }

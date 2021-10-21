@@ -97,6 +97,16 @@ impl MetaSound {
         }
     }
 
+    pub fn is_supported(&self) -> bool {
+        match self.path.extension() {
+            Some(ext) => match ext.to_string_lossy().to_string().as_str() {
+                "mp3" | "m4a" | "ogg" | "flac" | "wav" => true,
+                _ => false,
+            },
+            None => false,
+        }
+    }
+
     // Tries to load metadata and tags, but does not fail.
     pub fn try_meta(&self) -> Self {
         match self.load_tag() {
