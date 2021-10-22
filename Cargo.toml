@@ -1,6 +1,6 @@
 [package]
 name = "lynx"
-version = "0.1.16"
+version = "0.1.17"
 edition = "2018"
 license = "MIT"
 authors = ["Johann Woelper <woelper@gmail.com>"]
