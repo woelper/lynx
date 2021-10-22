@@ -1,9 +1,10 @@
 use eframe::egui::{self, Color32, FontDefinitions, FontFamily, Response, TextStyle, Ui};
+use log::info;
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
-
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Theme {
     EguiLight,
     EguiDark,
@@ -19,15 +20,29 @@ impl Default for Theme {
 
 impl Theme {
     pub fn apply(&self, ctx: &egui::CtxRef) {
-        let main_col = Color32::from_rgb(255, 144, 144);
-        ctx.set_visuals(egui::Visuals::light());
-        let mut style: egui::Style = (*ctx.style()).clone();
-        style.visuals.widgets.inactive.bg_fill = main_col;
-        style.visuals.widgets.active.bg_fill = main_col;
-        style.visuals.widgets.open.bg_fill = main_col;
-        style.visuals.selection.bg_fill = main_col;
-        // style.visuals.widgets.noninteractive.bg_fill = main_col;
-        ctx.set_style(style);
+        info!("Setting {:?}", self);
+        match self {
+            Theme::EguiDark => {
+                ctx.set_visuals(egui::Visuals::dark());
+            }
+            Theme::EguiLight => {
+                ctx.set_visuals(egui::Visuals::light());
+            }
+            Theme::Red => {
+                ctx.set_visuals(egui::Visuals::light());
+                let main_col = Color32::from_rgb(255, 144, 144);
+                let mut style: egui::Style = (*ctx.style()).clone();
+                style.visuals.widgets.inactive.bg_fill = main_col;
+                style.visuals.widgets.active.bg_fill = main_col;
+                style.visuals.widgets.open.bg_fill = main_col;
+                style.visuals.selection.bg_fill = main_col;
+                // style.visuals.widgets.noninteractive.bg_fill = main_col;
+                ctx.set_style(style);
+            }
+            Theme::Grey => {
+                ctx.set_visuals(egui::Visuals::light());
+            }
+        }
 
         let mut fonts = FontDefinitions::default();
 

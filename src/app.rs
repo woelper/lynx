@@ -26,10 +26,11 @@ pub struct ApplicationState {
     pub active_sound: Option<MetaSound>,
     volume: f64,
     queue: SoundQueue,
-    // queue_index: usize,
     play_count: HashMap<MetaSound, usize>,
     favourites: HashSet<MetaSound>,
     bookmarks: HashSet<MetaSound>,
+    theme: Theme,
+    powersave: bool,
 }
 
 impl Default for ApplicationState {
@@ -42,6 +43,8 @@ impl Default for ApplicationState {
             play_count: HashMap::default(),
             favourites: HashSet::default(),
             bookmarks: HashSet::default(),
+            theme: Theme::default(),
+            powersave: true,
         }
     }
 }
@@ -109,6 +112,8 @@ impl epi::App for ApplicationState {
             bookmarks,
             favourites,
             play_count,
+            theme,
+            powersave,
         } = self;
         if egui::CentralPanel::default()
             .show(ctx, |ui| {
@@ -286,6 +291,7 @@ impl epi::App for ApplicationState {
                         playcount_ui(active_sound, play_count, manager, ui);
                         favourite_ui(active_sound, favourites, play_count, manager, ui);
                         bookmark_ui(active_sound, bookmarks, manager, ui);
+                        settings_ui(theme, powersave, ui);
                     });
                 } else {
                     ui.label("No Audio manager");
@@ -293,6 +299,7 @@ impl epi::App for ApplicationState {
             })
             .response
             .hovered()
+            || !*powersave
         {
             // only repaint on hover
             ctx.request_repaint();

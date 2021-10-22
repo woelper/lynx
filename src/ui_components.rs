@@ -1,13 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
 use eframe::egui::{
-    Color32, CursorIcon, Label, LayerId, Order, Response, SelectableLabel, Sense, Stroke, Ui, Vec2,
+    Color32, ComboBox, CtxRef, CursorIcon, Label, LayerId, Order, Response, SelectableLabel, Sense,
+    Stroke, Ui, Vec2,
 };
 use kira::manager::AudioManager;
 
 use crate::{
     sound::{MetaSound, SoundQueue},
-    theme::grad_button,
+    theme::{grad_button, Theme},
 };
 
 pub fn playlist_ui(
@@ -116,7 +117,7 @@ pub fn playcount_ui(
         sorted.sort_by_key(|a| a.1);
         sorted.reverse();
 
-        for sound in &sorted[0..10] {
+        for sound in &sorted {
             ui.horizontal(|ui| {
                 ui.label(format!("{:02}", sound.1));
                 if grad_button("▶", ui).clicked() {
@@ -203,6 +204,25 @@ pub fn scrubber(ui: &mut Ui, scale: f32) -> Response {
         Stroke::default(),
     );
     x
+}
+
+pub fn settings_ui(theme: &mut Theme, powersave: &mut bool, ui: &mut Ui) {
+    ui.collapsing("⛭ Settings", |ui| {
+        ui.checkbox(powersave, "Powersave mode");
+
+        ComboBox::from_label("Theme")
+            .selected_text(format!("{:?}", theme))
+            .show_ui(ui, |ui| {
+                for t in [Theme::EguiDark, Theme::EguiLight, Theme::Red] {
+                    if ui
+                        .selectable_value(theme, t.clone(), format!("{:?}", t))
+                        .clicked()
+                    {
+                        theme.apply(ui.ctx());
+                    }
+                }
+            });
+    });
 }
 
 pub fn play_as_active(
