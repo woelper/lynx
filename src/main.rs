@@ -8,6 +8,7 @@ use eframe::epi;
 use log::{info, LevelFilter};
 use std::path::PathBuf;
 use structopt::StructOpt;
+extern crate static_vcruntime;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
