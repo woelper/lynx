@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "lynx"
-version = "0.1.15"
+version = "0.1.16"
 dependencies = [
  "anyhow",
  "audiotags",
@@ -1230,6 +1230,7 @@ dependencies = [
  "kira",
  "log",
  "serde",
+ "static_vcruntime",
  "structopt",
  "walkdir",
 ]
@@ -2028,6 +2029,12 @@ dependencies = [
  "smithay-client-toolkit 0.14.0",
  "wayland-client",
 ]
+
+[[package]]
+name = "static_vcruntime"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a88c15d6fe7210ea80c578b53855615fdea0188e1630b6d9c377e1b2f2c098fa"
 
 [[package]]
 name = "stdweb"
