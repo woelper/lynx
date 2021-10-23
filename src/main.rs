@@ -36,6 +36,9 @@ fn main() {
     }
 
     let app = app::ApplicationState::default();
-    let opts = epi::NativeOptions::default();
-    eframe::run_native(Box::new(app), opts);
+    let options = eframe::NativeOptions {
+        drag_and_drop_support: true,
+        ..Default::default()
+    };
+    eframe::run_native(Box::new(app), options);
 }

@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "lynx"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "anyhow",
  "audiotags",
@@ -1879,9 +1879,9 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45005aa836116903a49cf3461474da697cfe66221762c6e95871092009ec86d6"
+checksum = "86018df177b1beef6c7c8ef949969c4f7cb9a9344181b92486b23c79995bdaa4"
 dependencies = [
  "base64",
  "bitflags",

@@ -1,6 +1,6 @@
 use eframe::egui::{self, DroppedFile, ScrollArea, Vec2};
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+
 use structopt::StructOpt;
 
 use crate::theme::Theme;
@@ -67,8 +67,8 @@ impl epi::App for ApplicationState {
             *self = storage;
         }
 
-        let theme = Theme::Red;
-        theme.apply(ctx);
+        
+        self.theme.apply(ctx);
 
         // Parse arguments to auto-play sound
         let args = super::Opt::from_args();
@@ -118,8 +118,11 @@ impl epi::App for ApplicationState {
         if egui::CentralPanel::default()
             .show(ctx, |ui| {
                 // ctx.style_ui(ui);
+                ctx.request_repaint();
 
+                // info!("{:?}", ctx.input().raw);
                 if !ctx.input().raw.dropped_files.is_empty() {
+                    info!("{:?}", ctx.input().raw.dropped_files);
                     handle_dropped(&ctx.input().raw.dropped_files, queue);
                 }
 
