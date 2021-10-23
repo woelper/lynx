@@ -1,10 +1,10 @@
+#![windows_subsystem = "windows"]
 mod app;
 #[cfg(target_os = "macos")]
 mod mac;
 pub mod sound;
 pub mod theme;
 pub mod ui_components;
-use eframe::epi;
 use log::{info, LevelFilter};
 use std::path::PathBuf;
 use structopt::StructOpt;
