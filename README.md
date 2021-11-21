@@ -21,7 +21,7 @@ TODO:
 - [ ] Keyboard shortcuts
 - [ ] Themes
 - [ ] Preload next song 
-- [ ] Recursively add dropped folders
+- [X] Recursively add dropped folders
 - [x] Bookmark support for individual files (For multiple audiobooks)
 - [X] Favorites
 - [X] Play count
