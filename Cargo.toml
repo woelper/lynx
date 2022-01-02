@@ -14,7 +14,7 @@ icon = ["src/logo.png"]
 
 [dependencies]
 # rodio = "*"
-eframe = "0.14.0"
+eframe = "0.15.0"
 serde = { version = "1", features = ["derive"], optional = true }
 structopt = "0.3"
 anyhow = "1.0.44"
