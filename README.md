@@ -1,7 +1,7 @@
 # lynx
 ## A _very_ minimal audio player
 
-This is a for-fun minimal cros-platform audio player. It's written as a challenge to replicate something that works like xmms or winamp in Rust.
+This is a for-fun minimal cross-platform audio player. It's written as a challenge to replicate something that works like xmms or winamp in Rust.
 
 ![screenshot](screenshot.png)
 
