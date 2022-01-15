@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, FontDefinitions, FontFamily, Response, TextStyle, Ui};
+use eframe::egui::{self, Color32, FontDefinitions, FontFamily, Response, TextStyle, Ui, FontData, WidgetText};
 use log::info;
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
@@ -49,7 +49,8 @@ impl Theme {
         // Install my own font (maybe supporting non-latin characters):
         fonts.font_data.insert(
             "my_font".to_owned(),
-            std::borrow::Cow::Borrowed(include_bytes!("IBMPlexSans-Regular.ttf")),
+            FontData::from_static(include_bytes!("IBMPlexSans-Regular.ttf"))
+            // std::borrow::Cow::Borrowed(),
         ); // .ttf and .otf supported
 
         // Put my font first (highest priority):
@@ -72,7 +73,7 @@ impl Theme {
 
 // pub struct GradientButton
 
-pub fn grad_button(text: impl ToString, ui: &mut Ui) -> Response {
+pub fn grad_button(text: impl Into<WidgetText>, ui: &mut Ui) -> Response {
     // ui.image(texture_id, size)
     // ui.p
     ui.button(text)

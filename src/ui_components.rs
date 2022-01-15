@@ -186,7 +186,7 @@ pub fn bookmark_ui(
 
 /// The scrollbar / scrub bar
 pub fn scrubber(ui: &mut Ui, scale: f32) -> Response {
-    let mut dim = ui.available_rect_before_wrap_finite();
+    let mut dim = ui.available_rect_before_wrap();
     dim.set_height(ui.spacing().interact_size.y);
     let x = ui.allocate_rect(dim, Sense::click());
     let radius = ui.style().visuals.widgets.active.corner_radius;

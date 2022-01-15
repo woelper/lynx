@@ -58,7 +58,7 @@ impl epi::App for ApplicationState {
     fn setup(
         &mut self,
         ctx: &egui::CtxRef,
-        _frame: &mut epi::Frame<'_>,
+        _frame: &epi::Frame,
         storage: Option<&dyn epi::Storage>,
     ) {
         if let Some(storage) = storage {
@@ -103,7 +103,7 @@ impl epi::App for ApplicationState {
         epi::set_value(storage, epi::APP_KEY, self);
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
         let ApplicationState {
             audiomanager: manager,
             active_sound,
@@ -289,7 +289,7 @@ impl epi::App for ApplicationState {
                         // end horizontal layout
                     });
 
-                    ScrollArea::auto_sized().show(ui, |ui| {
+                    ScrollArea::new([false,true]).show(ui, |ui| {
                         playlist_ui(queue, active_sound, play_count, manager, ui);
                         playcount_ui(active_sound, play_count, manager, ui);
                         favourite_ui(active_sound, favourites, play_count, manager, ui);
