@@ -1,28 +1,27 @@
 use eframe::egui::{self, DroppedFile, ScrollArea, Vec2};
+use kira::tween::Tween;
 use std::collections::{HashMap, HashSet};
 
 use structopt::StructOpt;
 
 use crate::theme::Theme;
 use crate::ui_components::*;
-use kira::instance::{InstanceSettings, InstanceState, StopInstanceSettings};
 use kira::manager::AudioManagerSettings;
 use kira::{
-    instance::{PauseInstanceSettings, ResumeInstanceSettings},
     manager::AudioManager,
 };
 use log::{debug, info};
 
 use super::sound::*;
 use eframe::epi;
-
+use kira_cpal::CpalBackend;
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
 pub struct ApplicationState {
     #[serde(skip)]
-    pub audiomanager: Option<AudioManager>,
+    pub audiomanager: Option<AudioManager<CpalBackend>>,
     pub active_sound: Option<MetaSound>,
     volume: f64,
     queue: SoundQueue,
@@ -61,6 +60,8 @@ impl epi::App for ApplicationState {
         _frame: &epi::Frame,
         storage: Option<&dyn epi::Storage>,
     ) {
+        use kira::tween::Tween;
+
         if let Some(storage) = storage {
             let storage: ApplicationState =
                 epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
@@ -74,13 +75,14 @@ impl epi::App for ApplicationState {
         let args = super::Opt::from_args();
 
         // Create an AudioManager
-        self.audiomanager = AudioManager::new(AudioManagerSettings::default()).ok();
+        // TODO: remove unwrap
+        self.audiomanager = AudioManager::new(CpalBackend::new().unwrap(), AudioManagerSettings::default()).ok();
 
         // If the application was called with files as an argument, play the first
         if let Some(first_arg) = args.files.first() {
             if let Some(manager) = &mut self.audiomanager {
                 // restore previous volume
-                let _ = manager.main_track().set_volume(self.volume);
+                let _ = manager.main_track().set_volume(self.volume, Tween::default());
                 // load the sound from disk
                 let sound = MetaSound::default()
                     .with_path(first_arg)
@@ -137,7 +139,7 @@ impl epi::App for ApplicationState {
                             )
                             .changed()
                         {
-                            let _ = manager.main_track().set_volume(*volume as f64);
+                            let _ = manager.main_track().set_volume(*volume as f64, Tween::default());
                         }
                     }
 

@@ -18,7 +18,8 @@ eframe = "0.16.0"
 serde = { version = "1", features = ["derive"], optional = true }
 structopt = "0.3"
 anyhow = "1.0.44"
-kira = {version = "0.5.3", features = ["serde_support"]}
+kira = {git = "https://github.com/tesselode/kira.git", version = "0.6.0-beta.5"}
+kira-cpal = {git = "https://github.com/tesselode/kira.git"}
 audiotags = "0.2.7182"
 walkdir = "2.3.2"
 log = "0.4.14"

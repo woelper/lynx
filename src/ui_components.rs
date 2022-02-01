@@ -4,7 +4,8 @@ use eframe::egui::{
     Color32, ComboBox, CtxRef, CursorIcon, Label, LayerId, Order, Response, SelectableLabel, Sense,
     Stroke, Ui, Vec2,
 };
-use kira::manager::AudioManager;
+use kira::manager::{AudioManager, backend::Backend};
+use kira_cpal::CpalBackend;
 
 use crate::{
     sound::{MetaSound, SoundQueue},
@@ -15,7 +16,7 @@ pub fn playlist_ui(
     queue: &mut SoundQueue,
     active_sound: &mut Option<MetaSound>,
     play_count: &mut HashMap<MetaSound, usize>,
-    manager: &mut AudioManager,
+    manager: &mut AudioManager<CpalBackend>,
     ui: &mut Ui,
 ) {
     ui.collapsing("♫ Playlist", |ui| {
@@ -105,7 +106,7 @@ pub fn playcount_ui(
     // queue_index: &mut usize,
     active_sound: &mut Option<MetaSound>,
     counter: &mut HashMap<MetaSound, usize>,
-    manager: &mut AudioManager,
+    manager: &mut AudioManager<CpalBackend>,
     ui: &mut Ui,
 ) {
     ui.collapsing("🔥 Most played", |ui| {
@@ -134,7 +135,7 @@ pub fn favourite_ui(
     active_sound: &mut Option<MetaSound>,
     favourites: &mut HashSet<MetaSound>,
     counter: &mut HashMap<MetaSound, usize>,
-    manager: &mut AudioManager,
+    manager: &mut AudioManager<CpalBackend>,
     ui: &mut Ui,
 ) {
     ui.collapsing("♡ Favourites", |ui| {
@@ -153,7 +154,7 @@ pub fn bookmark_ui(
     // queue_index: &mut usize,
     active_sound: &mut Option<MetaSound>,
     bookmarks: &mut HashSet<MetaSound>,
-    manager: &mut AudioManager,
+    manager: &mut AudioManager<CpalBackend>,
     ui: &mut Ui,
 ) {
     ui.collapsing("🔖 Bookmarks", |ui| {
@@ -228,7 +229,7 @@ pub fn settings_ui(theme: &mut Theme, powersave: &mut bool, ui: &mut Ui) {
 pub fn play_as_active(
     active_sound: &mut Option<MetaSound>,
     sound: &MetaSound,
-    manager: &mut AudioManager,
+    manager: &mut AudioManager<CpalBackend>,
     counter: &mut HashMap<MetaSound, usize>,
 ) {
     let _ = active_sound.as_mut().map(|s| s.stop());

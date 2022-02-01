@@ -1,10 +1,12 @@
-use kira::instance::{InstanceSettings, StopInstanceSettings};
+
+use kira::sound::static_sound::StaticSoundHandle;
 use kira::{
-    instance::handle::InstanceHandle,
+
     manager::AudioManager,
-    sound::{handle::SoundHandle, SoundSettings},
+
 };
 
+use kira_cpal::CpalBackend;
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
@@ -57,7 +59,7 @@ pub struct MetaSound {
     pub duration: Duration,
     pub looped: bool,
     #[serde(skip)]
-    pub soundhandle: Option<SoundHandle>,
+    pub soundhandle: Option<StaticSoundHandle>,
     #[serde(skip)]
     pub instancehandle: Option<InstanceHandle>,
     pub bookmarks: Vec<f64>,
@@ -115,13 +117,13 @@ impl MetaSound {
         }
     }
 
-    pub fn load(&self, manager: &mut AudioManager) -> Result<SoundHandle, Error> {
+    pub fn load(&self, manager: &mut AudioManager<CpalBackend>) -> Result<StaticSoundHandle, Error> {
         manager
             .load_sound(&self.path, SoundSettings::default())
             .map_err(|e| anyhow!("{}", e))
     }
 
-    pub fn load_soundhandle(&self, manager: &mut AudioManager) -> Self {
+    pub fn load_soundhandle(&self, manager: &mut AudioManager<CpalBackend>) -> Self {
         let handle = self.load(manager).ok();
         Self {
             soundhandle: handle,
@@ -139,7 +141,7 @@ impl MetaSound {
         Ok(())
     }
 
-    pub fn play_load_mut(&mut self, manager: &mut AudioManager) -> Result<()> {
+    pub fn play_load_mut(&mut self, manager: &mut AudioManager<CpalBackend>) -> Result<()> {
         self.soundhandle = self.load(manager).ok();
         if let Some(handle) = &self.soundhandle {
             self.duration = Duration::from_secs_f64(handle.duration());
