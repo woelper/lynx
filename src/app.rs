@@ -1,4 +1,5 @@
 use eframe::egui::{self, DroppedFile, ScrollArea, Vec2};
+use kira::sound::static_sound::PlaybackState;
 use kira::tween::Tween;
 use std::collections::{HashMap, HashSet};
 
@@ -207,30 +208,32 @@ impl epi::App for ApplicationState {
                             if let Some(instancehandle) = current_metasound.instancehandle.as_mut()
                             {
                                 if let Some(soundhandle) = current_metasound.soundhandle.as_mut() {
-                                    match instancehandle.state() {
-                                        InstanceState::Playing => {
+                                    match soundhandle.state() {
+                                        PlaybackState::Playing => {
                                             if ui.button("⏸").clicked() {
                                                 let _ =
-                                                    soundhandle.pause(PauseInstanceSettings::new());
+                                                    soundhandle.pause(Tween::default());
                                             }
                                             if ui.button("⏹").clicked() {
                                                 let _ =
-                                                    soundhandle.stop(StopInstanceSettings::new());
+                                                    soundhandle.stop(Tween::default());
                                             }
                                         }
-                                        InstanceState::Paused(_) => {
+                                        PlaybackState::Paused => {
                                             if ui.button("▶").clicked() {
                                                 let _ = soundhandle
-                                                    .resume(ResumeInstanceSettings::new());
+                                                    .resume(Tween::default());
                                             }
                                             if ui.button("⏹").clicked() {
                                                 let _ =
-                                                    soundhandle.stop(StopInstanceSettings::new());
+                                                    soundhandle.stop(Tween::default());
                                             }
                                         }
-                                        InstanceState::Stopped => {
+                                        PlaybackState::Stopped => {
                                             if ui.button("▶").clicked() {
-                                                let _ = soundhandle.play(InstanceSettings::new());
+                                                // TODO: where is .play()
+                                                // let _ = soundhandle.play(Tween::default());
+                                                let _ = soundhandle.resume(Tween::default());
                                             }
                                         }
                                         _ => {}

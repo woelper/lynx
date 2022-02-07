@@ -47,7 +47,7 @@ impl Playlist for SoundQueue {
 }
 
 #[cfg_attr(feature = "persistence", derive(Deserialize, Serialize))]
-#[derive(Debug, Clone, Default)]
+#[derive(Default)]
 /// A high-level sound
 pub struct MetaSound {
     /// Location of sound
